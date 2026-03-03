@@ -2,6 +2,8 @@
 
 # sqlite
 *.db
+*.db.backup
+*.db.bak
 *.sqlite
 *.sqlite3
 
