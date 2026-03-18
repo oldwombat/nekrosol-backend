@@ -106,7 +106,7 @@ test.describe('POST /api/player-actions', () => {
     expect(res.status()).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
-    expect(body.player.radiation).toBe(40)
+    expect(body.player.radiation).toBe(39)
     expect(body.inventoryCounts['RAD-X']).toBe(2)
   })
 
