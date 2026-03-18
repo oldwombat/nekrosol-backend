@@ -28,24 +28,23 @@ export default buildConfig({
     Players,
     Inventory,
   ],
-  server: {
-    cors: {
-      origin: [
-        'http://localhost:8081',
-        'http://localhost:3000',
-        '*',
-      ],
-      // other options (methods, credentials) as needed
-    },
-  },
+  // CORS: explicitly list allowed origins. Never use '*' — that allows any
+  // site to make credentialed requests and steal player session cookies.
+  // Add production URLs via CORS_ORIGINS env var (comma-separated).
+  cors: [
+    'http://localhost:8081',
+    'http://localhost:3000',
+    ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : []),
+  ],
   editor: lexicalEditor(),
-  secret: process.env.PAYLOAD_SECRET || '',
+  // SECURITY: PAYLOAD_SECRET must be set in .env — never fall back to empty string.
+  secret: process.env.PAYLOAD_SECRET ?? (() => { throw new Error('PAYLOAD_SECRET env var is required') })(),
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
   db: sqliteAdapter({
     client: {
-      url: process.env.DATABASE_URL || '',
+      url: process.env.DATABASE_URL ?? (() => { throw new Error('DATABASE_URL env var is required') })(),
     },
   }),
   sharp,

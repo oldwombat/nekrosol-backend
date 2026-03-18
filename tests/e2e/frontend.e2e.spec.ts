@@ -1,20 +1,14 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
 test.describe('Frontend', () => {
-  let page: Page
+  test('admin panel login page is reachable', async ({ page }) => {
+    await page.goto('/admin')
 
-  test.beforeAll(async ({ browser }, testInfo) => {
-    const context = await browser.newContext()
-    page = await context.newPage()
-  })
+    // Unauthenticated requests redirect to /admin/login
+    await expect(page).toHaveURL(/\/admin(\/login)?/)
 
-  test('can go on homepage', async ({ page }) => {
-    await page.goto('http://localhost:3000')
-
-    await expect(page).toHaveTitle(/Payload Blank Template/)
-
-    const heading = page.locator('h1').first()
-
-    await expect(heading).toHaveText('Welcome to your new project.')
+    // The Payload login form should render
+    const emailField = page.locator('input[id="field-email"]')
+    await expect(emailField).toBeVisible()
   })
 })
