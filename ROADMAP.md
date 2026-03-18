@@ -8,55 +8,78 @@
 
 | Repo | Stack | Status |
 |------|-------|--------|
-| `nekrosol-backend` | Payload CMS 3 + Next.js + SQLite | ~10% test coverage · 4 actions live |
-| `nekrosol-frontend` | Expo 54 + React Native + Expo Router | 0 tests · Explore tab is placeholder |
+| `nekrosol-backend` | Payload CMS 3 + Next.js + SQLite | 19 E2E tests · 5 actions live · CORS hardened |
+| `nekrosol-frontend` | Expo 54 + React Native + Expo Router | 16 unit tests · Locations screen · Mission modals |
 
-**Live actions:** `BEG` · `SPD-1` · `MED-1` · `RAD-X`  
-**Stubbed (action: null):** Patrol · Salvage · Escort · all Locations · all Skills
+**Live actions:** `BEG` · `SPD-1` · `MED-1` · `RAD-X` · `ESCORT`  
+**Stubbed (action: null):** Patrol · Salvage · all Skills  
+**Docs:** `docs/VISION.md` · `docs/PLAYWRIGHT.md` · `CHANGELOG.md`
 
 ---
 
 ## Area 1 — Test Coverage
 
 ### Backend
-- [ ] **Playwright E2E tests for player-actions** `[tests-backend-player-actions]`  
-  Unauthenticated → 401 · BEG earns credits & costs energy · BEG with 0 energy → 400 · SPD-1/MED-1/RAD-X with and without items · Needs `seedTestPlayer` helper.
-
-- [ ] **Vitest integration tests for player-inventory lib** `[tests-backend-inventory-vitest]`  
-  `getPlayerInventory` empty for new player · `consumeInventoryItem` decrements quantity · quantity=0 returns error.
+- [x] **Playwright E2E tests for player-actions** `[tests-backend-player-actions]`
+- [x] **Playwright E2E tests for player-inventory** `[tests-backend-inventory-pw]`
+- [x] **Vitest integration test** `[tests-backend-inventory-vitest]`
 
 ### Frontend
-- [ ] **Hook unit tests (useHomeAuth, useHomeInventory)** `[tests-frontend-hooks]`  
-  Add Vitest + `@testing-library/react-hooks`. Test auth flow, inventory merge logic, action dispatch and state updates.
+- [x] **Hook unit tests (useHomeAuth, useHomeInventory)** `[tests-frontend-hooks]` — 16 tests, all green
 
 ---
 
 ## Area 2 — Game Mechanics
 
-- [ ] **`addInventoryItem` helper** `[mechanics-add-inventory-item]` ← *unblocks the three missions below*  
-  Add `addInventoryItem(payload, playerID, itemKey, quantity)` to `src/lib/player-inventory.ts`. Upserts an inventory row; required for all loot/drop mechanics.
+- [x] **`addInventoryItem` helper** `[mechanics-add-inventory-item]`
+- [ ] **PATROL mission** `[mechanics-mission-patrol]` *(needs: addInventoryItem ✅)*  
+  Cost: 2 energy · Radiation +5 · 30% chance to loot 1× RAD-X.
 
-- [ ] **PATROL mission** `[mechanics-mission-patrol]` *(needs: addInventoryItem)*  
-  Cost: 2 energy · Radiation +5 · 30% chance to loot 1× RAD-X. Add `PATROL` case to `player-actions/route.ts`.
-
-- [ ] **SALVAGE mission** `[mechanics-mission-salvage]` *(needs: addInventoryItem)*  
+- [ ] **SALVAGE mission** `[mechanics-mission-salvage]` *(needs: addInventoryItem ✅)*  
   Cost: 3 energy · Radiation +8 · Random component drop.
 
-- [ ] **ESCORT mission** `[mechanics-mission-escort]` *(needs: addInventoryItem)*  
-  Cost: 2 energy · Earn 10–20 credits · 20% chance health −10 (combat damage).
+- [x] **ESCORT mission** `[mechanics-mission-escort]`  
+  Cost: 2 energy · Earn 10–20 credits · 20% chance health −10.
 
-- [ ] **Radiation tick** `[mechanics-radiation-tick]`  
-  After every action: radiation naturally decays 1. If radiation > 80, health −2. Applied in `player-actions/route.ts` after resolving the main action.
+- [x] **Radiation tick** `[mechanics-radiation-tick]`  
+  Decay −1 per action. Health −2 if radiation > 80. Includes `radiationTick` in response.
 
 - [ ] **Skill XP system** `[mechanics-skill-xp]` *(needs: PATROL mission)*  
-  Add `skillXP` number fields to Players collection (one per skill). Grant XP on mission completion. Add migration + regenerate types.
+  Add `skillXP` number fields to Players. Grant XP on mission completion.
 
 ---
 
 ## Area 3 — Frontend UI/UX
 
-- [ ] **Replace Explore tab with World/Locations screen** `[frontend-replace-explore]`  
-  Replace the Expo template placeholder with 4 location cards (Dustline Tavern, Ember Bank, Blackglass Market, Reactor District) showing name, summary, radiation badge, and a stub travel button.
+- [x] **Replace Explore tab with World/Locations screen** `[frontend-replace-explore]`
+- [ ] **Dedicated Inventory screen** `[frontend-inventory-screen]`  
+  New `app/(tabs)/inventory.tsx` tab with FlatList, inline use/equip, empty state.
+
+- [ ] **Global auth context** `[frontend-auth-context]` ← *unblocks TopNav player info*  
+  Move player state into React context at `app/_layout.tsx`.
+
+- [ ] **Enhanced stat bars** `[frontend-stat-bars]`  
+  Radiation pulse above 80%. Health colour gradient. Energy pips. Credits counter.
+
+- [ ] **Onboarding flow** `[frontend-onboarding]`  
+  Welcome modal on first login. Display name pick + lore intro. AsyncStorage dismiss.
+
+- [x] **Mission detail modal** `[frontend-mission-modal]`  
+  Tapping a mission opens modal with description, energy cost, reward, Run CTA.
+
+- [ ] **Player info in TopNav** `[frontend-topnav-player]` *(needs: auth context)*  
+  Show displayName and credits in header when authenticated.
+
+---
+
+## Area 4 — Architecture & Code Quality
+
+- [x] **Frontend API client module** `[arch-api-client]` — `lib/api.ts` created
+- [x] **Tighten CORS config** `[arch-cors-tighten]` — wildcard removed, CORS_ORIGINS env var
+- [ ] **Rate limiting on player-actions** `[arch-rate-limit]`  
+  20 req/min per player. 429 response when exceeded.
+
+---
 
 - [ ] **Dedicated Inventory screen** `[frontend-inventory-screen]`  
   New `app/(tabs)/inventory.tsx` tab. FlatList of items with quantities. Inline use/equip actions. Empty state messaging.
@@ -91,15 +114,15 @@
 
 ---
 
-## Suggested First Sprint
+## Suggested Next Sprint
 
-Start here — independent tasks that deliver the most value fastest:
+The natural sequence based on dependencies:
 
-1. `tests-backend-player-actions` — confidence before adding more mechanics
-2. `mechanics-add-inventory-item` — unblocks all three new missions
-3. `frontend-replace-explore` — removes the Expo placeholder
-4. `frontend-auth-context` — enables TopNav player info and cleaner code everywhere
-5. `tests-frontend-hooks` — low-effort, high-confidence
+1. `mechanics-mission-patrol` + `mechanics-mission-salvage` — `addInventoryItem` is now done, these unblock skill XP
+2. `frontend-auth-context` — enables TopNav player info and cleaner architecture
+3. `frontend-stat-bars` — high visual impact, animations already available via reanimated
+4. `frontend-inventory-screen` — dedicated tab is better UX than embedded list
+5. `arch-rate-limit` — security hardening before any public release
 
 ---
 
