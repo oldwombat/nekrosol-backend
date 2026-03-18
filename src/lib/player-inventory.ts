@@ -77,3 +77,38 @@ export const consumeInventoryItem = async (
     counts: refreshed.counts,
   }
 }
+
+export const addInventoryItem = async (
+  payload: any,
+  playerID: number | string,
+  itemKey: string,
+  quantity: number,
+): Promise<{ ok: true; counts: InventoryCounts } | { ok: false; error: string }> => {
+  try {
+    const { docs } = await getPlayerInventory(payload, playerID)
+    const existing = docs.find((doc) => doc.itemKey === itemKey)
+
+    if (existing) {
+      const currentQuantity = asNumber(existing.quantity, 0)
+      await payload.update({
+        collection: 'inventory',
+        id: existing.id,
+        data: { quantity: currentQuantity + quantity },
+        depth: 0,
+        overrideAccess: true,
+      })
+    } else {
+      await payload.create({
+        collection: 'inventory',
+        data: { player: playerID, itemKey, quantity },
+        depth: 0,
+        overrideAccess: true,
+      })
+    }
+
+    const refreshed = await getPlayerInventory(payload, playerID)
+    return { ok: true as const, counts: refreshed.counts }
+  } catch (err) {
+    return { ok: false as const, error: String(err) }
+  }
+}

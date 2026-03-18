@@ -3,7 +3,7 @@ import { headers as getHeaders } from 'next/headers'
 import { getPayload } from 'payload'
 import { consumeInventoryItem, getPlayerInventory } from '@/lib/player-inventory'
 
-type ActionType = 'SPD-1' | 'MED-1' | 'RAD-X' | 'BEG'
+type ActionType = 'SPD-1' | 'MED-1' | 'RAD-X' | 'BEG' | 'ESCORT'
 
 type PlayerStats = {
   id: number | string
@@ -51,6 +51,18 @@ const applyAction = (player: PlayerStats, action: ActionType) => {
         gain,
       }
     }
+    case 'ESCORT': {
+      const gain = Math.floor(Math.random() * 11) + 10 // 10–20 credits
+      const combatDamage = Math.random() < 0.2 ? 10 : 0
+      return {
+        data: {
+          credits: Math.min(credits + gain, creditsMax),
+          energy: Math.max(0, energy - 2),
+          health: Math.max(0, health - combatDamage),
+        },
+        gain,
+      }
+    }
   }
 }
 
@@ -71,7 +83,7 @@ export const POST = async (request: Request) => {
     const body = await request.json().catch(() => null)
     const action = body?.action as ActionType | undefined
 
-    if (!action || !['SPD-1', 'MED-1', 'RAD-X', 'BEG'].includes(action)) {
+    if (!action || !['SPD-1', 'MED-1', 'RAD-X', 'BEG', 'ESCORT'].includes(action)) {
       return Response.json({ error: 'Invalid action' }, { status: 400 })
     }
 
@@ -83,6 +95,10 @@ export const POST = async (request: Request) => {
     })) as PlayerStats
 
     if (action === 'BEG' && asNumber(player.energy, 0) < 1) {
+      return Response.json({ error: 'Not enough energy' }, { status: 400 })
+    }
+
+    if (action === 'ESCORT' && asNumber(player.energy, 0) < 2) {
       return Response.json({ error: 'Not enough energy' }, { status: 400 })
     }
 
@@ -99,10 +115,28 @@ export const POST = async (request: Request) => {
 
     const result = applyAction(player, action)
 
+    // Radiation tick: every action passively decays radiation by 1.
+    // If radiation was > 80 before decay, radiation sickness deals -2 health.
+    const originalRadiation = asNumber(player.radiation, 0)
+    const tickDamage: 0 | 2 = originalRadiation > 80 ? 2 : 0
+    const radiationTick = { decayed: 1, damage: tickDamage }
+
+    const actionData = result.data as unknown as Record<string, number>
+    const postActionRadiation =
+      actionData.radiation !== undefined ? actionData.radiation : originalRadiation
+    const postActionHealth =
+      actionData.health !== undefined ? actionData.health : asNumber(player.health, 0)
+
+    const finalData = {
+      ...actionData,
+      radiation: Math.max(0, postActionRadiation - 1),
+      ...(tickDamage > 0 ? { health: Math.max(0, postActionHealth - tickDamage) } : {}),
+    }
+
     const updatedPlayer = await payload.update({
       collection: 'players',
       id: user.id,
-      data: result.data,
+      data: finalData,
       overrideAccess: true,
       depth: 0,
     })
@@ -121,6 +155,7 @@ export const POST = async (request: Request) => {
       ok: true,
       action,
       gain: result.gain,
+      radiationTick,
       player: updatedPlayer,
       inventoryCounts: inventory.counts,
     })
