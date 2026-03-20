@@ -1,4 +1,5 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, Payload } from 'payload'
+import { ValidationError } from 'payload'
 
 type AccessRequest = {
   user?: {
@@ -13,11 +14,54 @@ type CreateAccessRequest = AccessRequest & {
   }
 }
 
+async function checkDuplicateInventory(args: {
+  data?: Record<string, unknown>
+  operation: string
+  req: { payload: Payload }
+}): Promise<Record<string, unknown> | undefined> {
+  const { data, operation, req } = args
+  if (operation !== 'create') return data
+
+  const playerID = data?.player
+  const itemKey = data?.itemKey
+
+  if (!playerID || !itemKey) return data
+
+  const existing = await req.payload.find({
+    collection: 'inventory',
+    where: {
+      and: [
+        { player: { equals: playerID } },
+        { itemKey: { equals: itemKey } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  if (existing.totalDocs > 0) {
+    throw new ValidationError({
+      errors: [
+        {
+          message: `Player already has an inventory entry for item "${String(itemKey)}". Update the existing entry instead.`,
+          path: 'itemKey',
+        },
+      ],
+    })
+  }
+
+  return data
+}
+
 export const Inventory: CollectionConfig = {
   slug: 'inventory',
   admin: {
     useAsTitle: 'itemKey',
     defaultColumns: ['itemKey', 'quantity', 'player'],
+  },
+  hooks: {
+    beforeValidate: [checkDuplicateInventory],
   },
   access: {
     create: ({ req, data }: { req: AccessRequest; data?: CreateAccessRequest['data'] }) => {

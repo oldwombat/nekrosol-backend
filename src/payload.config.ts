@@ -10,6 +10,13 @@ import { Media } from './collections/Media'
 import { Lore } from './collections/Lore'
 import { Players } from './collections/Players'
 import { Inventory } from './collections/Inventory'
+import { Items } from './collections/Items'
+import { GameEvents } from './collections/GameEvents'
+import { Quests } from './collections/Quests'
+import { PlayerQuestProgress } from './collections/PlayerQuestProgress'
+import { Missions } from './collections/Missions'
+import { Messages } from './collections/Messages'
+import { PlayerMissionHistory } from './collections/PlayerMissionHistory'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -27,6 +34,13 @@ export default buildConfig({
     Media,
     Players,
     Inventory,
+    Items,
+    GameEvents,
+    Quests,
+    PlayerQuestProgress,
+    Missions,
+    Messages,
+    PlayerMissionHistory,
   ],
   // CORS: explicitly list allowed origins. Never use '*' — that allows any
   // site to make credentialed requests and steal player session cookies.

@@ -4,6 +4,8 @@
 - Always refer to the user as "boss".
 - Keep responses concise, accurate, and learning-oriented.
 - Prefer concrete references to project files over generic advice.
+- Maintain all Plans and TODOs in plan.md in the root of the repo so they are visible to all contributors including Copilot.
+- Maintain a release notes markdown file in the root of the repo to track past changes to the codebase so that Copilot can refer to it when making suggestions. Link to the release notes file in the plan.md file.
 
 ## Backend Architecture
 - This repo is a Payload 3 + Next.js App Router backend.

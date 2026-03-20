@@ -1,3 +1,5 @@
+import type { Payload } from 'payload'
+
 type InventoryDoc = {
   id: number | string
   itemKey?: string | null
@@ -21,7 +23,7 @@ const toCounts = (docs: InventoryDoc[]): InventoryCounts => {
   return counts
 }
 
-export const getPlayerInventory = async (payload: any, playerID: number | string) => {
+export const getPlayerInventory = async (payload: Payload, playerID: number | string) => {
   const existing = await payload.find({
     collection: 'inventory',
     where: {
@@ -43,7 +45,7 @@ export const getPlayerInventory = async (payload: any, playerID: number | string
 }
 
 export const consumeInventoryItem = async (
-  payload: any,
+  payload: Payload,
   playerID: number | string,
   itemKey: string,
 ) => {
@@ -60,15 +62,25 @@ export const consumeInventoryItem = async (
     return { ok: false as const, error: `No ${itemKey} items left` }
   }
 
-  await payload.update({
+  // Atomic conditional update: only decrement if quantity is still > 0 at write time.
+  // This prevents the TOCTOU race where two concurrent requests both pass the read-side
+  // check but only one should succeed.
+  const updated = await payload.update({
     collection: 'inventory',
-    id: item.id,
-    data: {
-      quantity: currentQuantity - 1,
+    where: {
+      and: [
+        { id: { equals: item.id } },
+        { quantity: { greater_than: 0 } },
+      ],
     },
+    data: { quantity: currentQuantity - 1 },
     depth: 0,
     overrideAccess: true,
   })
+
+  if (updated.docs.length === 0) {
+    return { ok: false as const, error: 'Insufficient quantity' }
+  }
 
   const refreshed = await getPlayerInventory(payload, playerID)
 
@@ -79,7 +91,7 @@ export const consumeInventoryItem = async (
 }
 
 export const addInventoryItem = async (
-  payload: any,
+  payload: Payload,
   playerID: number | string,
   itemKey: string,
   quantity: number,

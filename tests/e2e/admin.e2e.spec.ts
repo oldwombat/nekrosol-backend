@@ -2,6 +2,15 @@ import { test, expect, Page } from '@playwright/test'
 import { login } from '../helpers/login'
 import { seedTestUser, cleanupTestUser, testUser } from '../helpers/seedUser'
 
+test.describe('Admin Panel › unauthenticated', () => {
+  test('login page is reachable and renders form', async ({ page }) => {
+    await page.goto('/admin')
+    await expect(page).toHaveURL(/\/admin(\/login)?/)
+    const emailField = page.locator('input[id="field-email"]')
+    await expect(emailField).toBeVisible()
+  })
+})
+
 test.describe('Admin Panel', () => {
   let page: Page
 

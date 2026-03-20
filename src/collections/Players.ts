@@ -1,4 +1,6 @@
 import type { CollectionConfig } from 'payload'
+import { seedQuests } from '../seed/seedQuests'
+import { seedMissions } from '../seed/seedMissions'
 
 type AccessRequest = {
   user?: {
@@ -48,6 +50,17 @@ export const Players: CollectionConfig = {
       label: 'Display Name',
       type: 'text',
       required: false,
+      minLength: 2,
+      maxLength: 32,
+      validate: (value: string | null | undefined) => {
+        if (!value) return true
+        if (value.length < 2) return 'Display name must be at least 2 characters.'
+        if (value.length > 32) return 'Display name must be at most 32 characters.'
+        if (!/^[a-zA-Z0-9 _-]+$/.test(value)) {
+          return 'Display name may only contain letters, numbers, spaces, underscores, and hyphens.'
+        }
+        return true
+      },
     },
     {
       name: 'credits',
@@ -88,6 +101,17 @@ export const Players: CollectionConfig = {
       },
     },
     {
+      name: 'lastEnergyUpdate',
+      label: 'Last Energy Update',
+      type: 'date',
+      required: false,
+      admin: {
+        readOnly: true,
+        description: 'Timestamp of last energy regen sync. Used for lazy energy regeneration calculation.',
+        date: { pickerAppearance: 'dayAndTime' },
+      },
+    },
+    {
       name: 'health',
       label: 'Health',
       type: 'number',
@@ -125,102 +149,34 @@ export const Players: CollectionConfig = {
         readOnly: true,
       },
     },
-    {
-      name: 'thug',
-      label: 'Thug',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'thief',
-      label: 'Thief',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'grifter',
-      label: 'Grifter',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'pilot',
-      label: 'Pilot',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'medic',
-      label: 'Medic',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'hacker',
-      label: 'Hacker',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'technician',
-      label: 'Technician',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'chemist',
-      label: 'Chemist',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'physicist',
-      label: 'Physicist',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'scavenger',
-      label: 'Scavenger',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'mechanic',
-      label: 'Mechanic',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
-    {
-      name: 'smuggler',
-      label: 'Smuggler',
-      type: 'number',
-      required: true,
-      defaultValue: 0,
-      min: 0,
-    },
+    // Skills: capped at 100 per prestige level. At 100, player may prestige (resets to 1, increments *Prestige).
+    { name: 'thug',        label: 'Thug',        type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'thief',       label: 'Thief',       type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'grifter',     label: 'Grifter',     type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'pilot',       label: 'Pilot',       type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'medic',       label: 'Medic',       type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'hacker',      label: 'Hacker',      type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'technician',  label: 'Technician',  type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'chemist',     label: 'Chemist',     type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'physicist',   label: 'Physicist',   type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'scavenger',   label: 'Scavenger',   type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'mechanic',    label: 'Mechanic',    type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    { name: 'smuggler',    label: 'Smuggler',    type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
+    // Prestige levels (0 = never prestiged, 4 = max). Incremented by POST /api/player-prestige.
+    // Not required (nullable in DB) so drizzle can ADD COLUMN without recreating the table.
+    // Treat null as 0 in all game logic — defaultValue ensures new signups get 0.
+    { name: 'thugPrestige',       label: 'Thug Prestige',       type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'thiefPrestige',      label: 'Thief Prestige',      type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'grifterPrestige',    label: 'Grifter Prestige',    type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'pilotPrestige',      label: 'Pilot Prestige',      type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'medicPrestige',      label: 'Medic Prestige',      type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'hackerPrestige',     label: 'Hacker Prestige',     type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'technicianPrestige', label: 'Technician Prestige', type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'chemistPrestige',    label: 'Chemist Prestige',    type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'physicistPrestige',  label: 'Physicist Prestige',  type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'scavengerPrestige',  label: 'Scavenger Prestige',  type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'mechanicPrestige',   label: 'Mechanic Prestige',   type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    { name: 'smugglerPrestige',   label: 'Smuggler Prestige',   type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
     {
       name: 'role',
       label: 'Role',
@@ -233,4 +189,48 @@ export const Players: CollectionConfig = {
       },
     },
   ],
+  hooks: {
+    afterOperation: [
+      async ({ operation, result, req }) => {
+        if (operation !== 'create') return result
+
+        const payload = req.payload
+        const playerId = result?.id
+        if (!playerId) return result
+
+        try {
+          // Ensure all quest and mission definitions exist (idempotent)
+          await seedQuests(payload)
+          await seedMissions(payload)
+
+          // Fetch all quests to create progress rows
+          const allQuests = await payload.find({
+            collection: 'quests',
+            limit: 100,
+            overrideAccess: true,
+          })
+
+          for (const quest of allQuests.docs) {
+            // Prestige level 1 quests are immediately available; higher levels are locked
+            const status = quest.prestigeLevel === 1 ? 'available' : 'locked'
+            await payload.create({
+              collection: 'player-quest-progress',
+              data: {
+                player: playerId,
+                quest: quest.id,
+                status,
+              },
+              overrideAccess: true,
+            })
+          }
+
+          payload.logger.info(`[Players] Created ${allQuests.docs.length} quest progress rows for player ${playerId}`)
+        } catch (err) {
+          payload.logger.error(`[Players] Failed to create quest progress for player ${playerId}: ${err}`)
+        }
+
+        return result
+      },
+    ],
+  },
 }

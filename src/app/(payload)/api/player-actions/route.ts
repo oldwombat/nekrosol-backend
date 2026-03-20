@@ -1,71 +1,36 @@
 import configPromise from '@payload-config'
 import { headers as getHeaders } from 'next/headers'
 import { getPayload } from 'payload'
+
+import type { Mission, Player } from '@/payload-types'
+import { syncEnergyRegen } from '@/lib/energy'
+import {
+  canRunMission,
+  executeMission,
+  checkNewlyAvailableMissions,
+  createMissionAvailableMessage,
+} from '@/lib/mission-engine'
 import { consumeInventoryItem, getPlayerInventory } from '@/lib/player-inventory'
 
-type ActionType = 'SPD-1' | 'MED-1' | 'RAD-X' | 'BEG' | 'ESCORT'
-
-type PlayerStats = {
-  id: number | string
-  credits?: number | null
-  creditsMax?: number | null
-  energy?: number | null
-  energyMax?: number | null
-  health?: number | null
-  healthMax?: number | null
-  radiation?: number | null
-  radiationMax?: number | null
-}
-
-const asNumber = (value: unknown, fallback: number) =>
-  typeof value === 'number' && Number.isFinite(value) ? value : fallback
-
-const applyAction = (player: PlayerStats, action: ActionType) => {
-  const credits = asNumber(player.credits, 0)
-  const creditsMax = asNumber(player.creditsMax, 1000000)
-  const energy = asNumber(player.energy, 0)
-  const energyMax = asNumber(player.energyMax, 10)
-  const health = asNumber(player.health, 0)
-  const healthMax = asNumber(player.healthMax, 100)
-  const radiation = asNumber(player.radiation, 0)
-  switch (action) {
-    case 'SPD-1':
-      return {
-        data: { energy: energyMax },
-      }
-    case 'MED-1':
-      return {
-        data: { health: healthMax },
-      }
-    case 'RAD-X':
-      return {
-        data: { radiation: Math.max(0, radiation - 10) },
-      }
-    case 'BEG': {
-      const gain = Math.floor(Math.random() * 5) + 1
-      return {
-        data: {
-          credits: Math.min(credits + gain, creditsMax),
-          energy: Math.max(0, energy - 1),
-        },
-        gain,
-      }
-    }
-    case 'ESCORT': {
-      const gain = Math.floor(Math.random() * 11) + 10 // 10–20 credits
-      const combatDamage = Math.random() < 0.2 ? 10 : 0
-      return {
-        data: {
-          credits: Math.min(credits + gain, creditsMax),
-          energy: Math.max(0, energy - 2),
-          health: Math.max(0, health - combatDamage),
-        },
-        gain,
-      }
-    }
-  }
-}
-
+/**
+ * POST /api/player-actions
+ *
+ * Execute a mission by slug. The action slug is looked up in the Missions
+ * collection and executed by the generic mission engine.
+ *
+ * Body: { action: string }  — mission slug (case-insensitive, e.g. "patrol", "ESCORT")
+ *
+ * Response: {
+ *   ok: true,
+ *   action: string,
+ *   rewardsSummary: string[],
+ *   statChanges: Record<string, number>,
+ *   radiationTick: { decayed: number, damage: number },
+ *   player: Player,
+ *   inventoryCounts: Record<string, number>,
+ *   newMessages: number,
+ * }
+ */
 export const POST = async (request: Request) => {
   try {
     const payload = await getPayload({ config: configPromise })
@@ -81,83 +46,124 @@ export const POST = async (request: Request) => {
     }
 
     const body = await request.json().catch(() => null)
-    const action = body?.action as ActionType | undefined
+    const rawAction = body?.action as string | undefined
 
-    if (!action || !['SPD-1', 'MED-1', 'RAD-X', 'BEG', 'ESCORT'].includes(action)) {
-      return Response.json({ error: 'Invalid action' }, { status: 400 })
+    if (!rawAction || typeof rawAction !== 'string') {
+      return Response.json({ error: 'Missing action' }, { status: 400 })
     }
 
-    const player = (await payload.findByID({
-      collection: 'players',
-      id: user.id,
+    // Normalize to lowercase for slug lookup
+    const actionSlug = rawAction.toLowerCase()
+
+    // Sync energy regen before any checks
+    const player = await syncEnergyRegen(user.id, payload) as Player
+
+    // Look up mission from the database
+    const missionsResult = await payload.find({
+      collection: 'missions',
+      where: {
+        and: [
+          { slug: { equals: actionSlug } },
+          { isActive: { equals: true } },
+        ],
+      },
+      limit: 1,
       depth: 0,
       overrideAccess: true,
-    })) as PlayerStats
+    })
 
-    if (action === 'BEG' && asNumber(player.energy, 0) < 1) {
-      return Response.json({ error: 'Not enough energy' }, { status: 400 })
+    if (missionsResult.docs.length === 0) {
+      return Response.json({ error: `Unknown action: ${rawAction}` }, { status: 400 })
     }
 
-    if (action === 'ESCORT' && asNumber(player.energy, 0) < 2) {
-      return Response.json({ error: 'Not enough energy' }, { status: 400 })
-    }
+    const mission = missionsResult.docs[0] as Mission
 
-    const requiresItem = action === 'SPD-1' || action === 'MED-1' || action === 'RAD-X'
-
-    if (requiresItem) {
-      const beforeInventory = await getPlayerInventory(payload, user.id)
-      const currentCount = Number(beforeInventory.counts[action] ?? 0)
-
-      if (currentCount < 1) {
-        return Response.json({ error: `No ${action} items left` }, { status: 400 })
+    // Check item costs before running (consume inventory items)
+    const costs = Array.isArray(mission.costs) ? mission.costs as Array<{ type: string; itemKey?: string; quantity?: number }> : []
+    const itemCosts = costs.filter((c) => c.type === 'item')
+    for (const cost of itemCosts) {
+      if (!cost.itemKey) continue
+      const inventoryCheck = await getPlayerInventory(payload, player.id)
+      const have = inventoryCheck.counts[cost.itemKey] ?? 0
+      if (have < (cost.quantity ?? 1)) {
+        return Response.json({ error: `No ${cost.itemKey} items left` }, { status: 400 })
       }
     }
 
-    const result = applyAction(player, action)
+    // Check mission requirements
+    const check = await canRunMission(player, mission, payload)
+    if (!check.canRun) {
+      const firstReason = check.blockedReasons[0]?.message ?? 'Requirements not met'
+      return Response.json({ error: firstReason, blockedReasons: check.blockedReasons }, { status: 400 })
+    }
+
+    // Consume item costs from inventory
+    for (const cost of itemCosts) {
+      if (!cost.itemKey) continue
+      const consumed = await consumeInventoryItem(payload, player.id, cost.itemKey)
+      if (!consumed.ok) {
+        return Response.json({ error: consumed.error }, { status: 400 })
+      }
+    }
+
+    // Execute the mission (applies stat costs + rewards, records history)
+    const result = await executeMission(player, mission, payload)
 
     // Radiation tick: every action passively decays radiation by 1.
     // If radiation was > 80 before decay, radiation sickness deals -2 health.
-    const originalRadiation = asNumber(player.radiation, 0)
-    const tickDamage: 0 | 2 = originalRadiation > 80 ? 2 : 0
+    const postActionPlayer = result.playerAfter
+    const postActionRadiation = postActionPlayer.radiation ?? 0
+    const tickDamage: 0 | 2 = postActionRadiation > 80 ? 2 : 0
     const radiationTick = { decayed: 1, damage: tickDamage }
 
-    const actionData = result.data as unknown as Record<string, number>
-    const postActionRadiation =
-      actionData.radiation !== undefined ? actionData.radiation : originalRadiation
-    const postActionHealth =
-      actionData.health !== undefined ? actionData.health : asNumber(player.health, 0)
-
-    const finalData = {
-      ...actionData,
+    const tickData: Record<string, number> = {
       radiation: Math.max(0, postActionRadiation - 1),
-      ...(tickDamage > 0 ? { health: Math.max(0, postActionHealth - tickDamage) } : {}),
+    }
+    if (tickDamage > 0) {
+      tickData.health = Math.max(0, (postActionPlayer.health ?? 0) - tickDamage)
     }
 
-    const updatedPlayer = await payload.update({
+    const finalPlayer = await payload.update({
       collection: 'players',
-      id: user.id,
-      data: finalData,
+      id: player.id,
+      data: tickData,
       overrideAccess: true,
       depth: 0,
-    })
+    }) as Player
 
-    if (requiresItem) {
-      const consumed = await consumeInventoryItem(payload, user.id, action)
+    // Check for newly available missions and notify via NPC messages
+    let newMessages = 0
+    try {
+      const allMissionsResult = await payload.find({
+        collection: 'missions',
+        where: { isActive: { equals: true } },
+        limit: 500,
+        depth: 0,
+        overrideAccess: true,
+      })
+      const allMissions = allMissionsResult.docs as Mission[]
+      const newlyAvailable = await checkNewlyAvailableMissions(player, finalPlayer, allMissions, payload)
 
-      if (!consumed.ok) {
-        return Response.json({ error: consumed.error }, { status: 500 })
+      for (const m of newlyAvailable) {
+        await createMissionAvailableMessage(player.id, m, payload)
+        newMessages++
       }
+    } catch (notifyErr) {
+      // Non-fatal — don't fail the action if notification creation fails
+      console.error('[player-actions] notification error', notifyErr)
     }
 
-    const inventory = await getPlayerInventory(payload, user.id)
+    const inventory = await getPlayerInventory(payload, player.id)
 
     return Response.json({
       ok: true,
-      action,
-      gain: result.gain,
+      action: actionSlug,
+      rewardsSummary: result.rewardsSummary,
+      statChanges: result.statChanges,
       radiationTick,
-      player: updatedPlayer,
+      player: finalPlayer,
       inventoryCounts: inventory.counts,
+      newMessages,
     })
   } catch (error) {
     console.error('player-actions error', error)

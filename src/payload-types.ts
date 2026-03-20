@@ -73,6 +73,13 @@ export interface Config {
     media: Media;
     players: Player;
     inventory: Inventory;
+    items: Item;
+    'game-events': GameEvent;
+    quests: Quest;
+    'player-quest-progress': PlayerQuestProgress;
+    missions: Mission;
+    messages: Message;
+    'player-mission-history': PlayerMissionHistory;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -85,6 +92,13 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     players: PlayersSelect<false> | PlayersSelect<true>;
     inventory: InventorySelect<false> | InventorySelect<true>;
+    items: ItemsSelect<false> | ItemsSelect<true>;
+    'game-events': GameEventsSelect<false> | GameEventsSelect<true>;
+    quests: QuestsSelect<false> | QuestsSelect<true>;
+    'player-quest-progress': PlayerQuestProgressSelect<false> | PlayerQuestProgressSelect<true>;
+    missions: MissionsSelect<false> | MissionsSelect<true>;
+    messages: MessagesSelect<false> | MessagesSelect<true>;
+    'player-mission-history': PlayerMissionHistorySelect<false> | PlayerMissionHistorySelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -211,6 +225,10 @@ export interface Player {
   creditsMax: number;
   energy: number;
   energyMax: number;
+  /**
+   * Timestamp of last energy regen sync. Used for lazy energy regeneration calculation.
+   */
+  lastEnergyUpdate?: string | null;
   health: number;
   healthMax: number;
   radiation: number;
@@ -227,6 +245,18 @@ export interface Player {
   scavenger: number;
   mechanic: number;
   smuggler: number;
+  thugPrestige?: number | null;
+  thiefPrestige?: number | null;
+  grifterPrestige?: number | null;
+  pilotPrestige?: number | null;
+  medicPrestige?: number | null;
+  hackerPrestige?: number | null;
+  technicianPrestige?: number | null;
+  chemistPrestige?: number | null;
+  physicistPrestige?: number | null;
+  scavengerPrestige?: number | null;
+  mechanicPrestige?: number | null;
+  smugglerPrestige?: number | null;
   role: string;
   updatedAt: string;
   createdAt: string;
@@ -256,6 +286,322 @@ export interface Inventory {
   player: number | Player;
   itemKey: string;
   quantity: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "items".
+ */
+export interface Item {
+  id: number;
+  /**
+   * Machine-readable key (e.g. "spd-1", "med-1", "rad-x"). Must be unique.
+   */
+  key: string;
+  /**
+   * Display name shown in the game UI (e.g. "SPD-1 Stimpak")
+   */
+  name: string;
+  /**
+   * Lore/flavour text shown in item tooltip or detail modal
+   */
+  description?: string | null;
+  category: 'medicine' | 'consumable' | 'material' | 'weapon' | 'armour' | 'misc';
+  /**
+   * Maximum quantity a player can hold at once
+   */
+  maxStack: number;
+  /**
+   * JSON object describing stat effects when used. E.g. { "energy": 3 } or { "radiation": -10 }. Keys match player stat names.
+   */
+  effects?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Base credit value for buying/selling at market
+   */
+  value?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Append-only event log. Never edit or delete rows.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "game-events".
+ */
+export interface GameEvent {
+  id: number;
+  player: number | Player;
+  eventType:
+    | 'action_taken'
+    | 'prestige_completed'
+    | 'quest_completed'
+    | 'item_acquired'
+    | 'item_consumed'
+    | 'skill_xp_gained';
+  /**
+   * Structured payload — shape depends on eventType.
+   */
+  eventData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "quests".
+ */
+export interface Quest {
+  id: number;
+  skill:
+    | 'thug'
+    | 'thief'
+    | 'grifter'
+    | 'pilot'
+    | 'medic'
+    | 'hacker'
+    | 'technician'
+    | 'chemist'
+    | 'physicist'
+    | 'scavenger'
+    | 'mechanic'
+    | 'smuggler';
+  /**
+   * Which prestige unlock this quest gates (1 = first prestige, 4 = final).
+   */
+  prestigeLevel: number;
+  title: string;
+  description: string;
+  requirementType: 'click' | 'mission_count' | 'item_consume' | 'stat_threshold' | 'puzzle';
+  /**
+   * Shape depends on requirementType. Leave empty for click quests. mission_count: { action, count } | item_consume: { itemKey, quantity } | stat_threshold: { stat, min?, max? } | puzzle: { puzzleId }
+   */
+  requirementData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * One row per player × quest (48 rows per player).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "player-quest-progress".
+ */
+export interface PlayerQuestProgress {
+  id: number;
+  player: number | Player;
+  quest: number | Quest;
+  status: 'locked' | 'available' | 'completed';
+  /**
+   * Partial completion data for mission_count / item_consume quests.
+   */
+  progress?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  completedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Master catalog of all playable missions. Edit costs, rewards and requirements here.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "missions".
+ */
+export interface Mission {
+  id: number;
+  /**
+   * Machine-readable ID used in player-actions (e.g. patrol, escort, beg).
+   */
+  slug: string;
+  name: string;
+  /**
+   * Flavour text shown to the player.
+   */
+  description: string;
+  category: 'combat' | 'scavenging' | 'social' | 'criminal' | 'tech';
+  /**
+   * Skill this mission develops XP for (once skill XP is implemented).
+   */
+  primarySkill:
+    | 'thug'
+    | 'thief'
+    | 'grifter'
+    | 'pilot'
+    | 'medic'
+    | 'hacker'
+    | 'technician'
+    | 'chemist'
+    | 'physicist'
+    | 'scavenger'
+    | 'mechanic'
+    | 'smuggler';
+  /**
+   * Complexity band (1 = beginner, 5 = endgame). Used alongside visibilityRequirements to gate content narratively.
+   */
+  tier: number;
+  /**
+   * Inactive missions are hidden from all players regardless of visibility rules.
+   */
+  isActive?: boolean | null;
+  /**
+   * Array of cost objects deducted when the mission runs. Examples: [{type:"energy",amount:2}] [{type:"credits",amount:10}] [{type:"health",amount:5}]
+   */
+  costs?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Conditions the player must meet to run the mission (shown as locked hint if unmet). Examples: [{type:"stat_min",stat:"energy",value:2}] [{type:"mission_completed_count",missionSlug:"patrol",count:3}]
+   */
+  requirements?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Conditions to even show this mission in the player list. Leave empty to always show. Examples: [{type:"stat_min",stat:"hacker",value:20}] [{type:"mission_completed_count",missionSlug:"beg",count:1}]
+   */
+  visibilityRequirements?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Rewards granted on mission completion. Examples: [{type:"credits",min:10,max:20}] [{type:"stat_delta",stat:"radiation",amount:5}] [{type:"item_chance",itemKey:"rad-x",probability:0.3,quantity:1}]
+   */
+  rewards?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Missions that must be completed at least once before this mission becomes visible.
+   */
+  dependencies?: (number | Mission)[] | null;
+  /**
+   * Which NPC persona sends the availability/completion message (e.g. sal, pit-boss, ghost).
+   */
+  npcSlug?: string | null;
+  /**
+   * Display name of the NPC (denormalised for message rendering speed).
+   */
+  npcName?: string | null;
+  /**
+   * What the NPC says when this mission first becomes available to the player.
+   */
+  availabilityMessage?: string | null;
+  /**
+   * What the NPC says when the player completes this mission for the first time.
+   */
+  completionMessage?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * NPC inbox messages. Created by the server when game events occur.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "messages".
+ */
+export interface Message {
+  id: number;
+  player: number | Player;
+  /**
+   * Machine-readable NPC identifier (e.g. sal, pit-boss, ghost, crow).
+   */
+  npcSlug: string;
+  /**
+   * Display name for the NPC sender.
+   */
+  npcName: string;
+  subject: string;
+  body: string;
+  type: 'mission_available' | 'trial_completed' | 'faction_intro' | 'combat_result' | 'general';
+  isRead?: boolean | null;
+  /**
+   * Optional context data. E.g. { missionSlug: "patrol" } or { questId: "abc123" }
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Append-only log of completed missions per player. Used for Trial requirement checking.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "player-mission-history".
+ */
+export interface PlayerMissionHistory {
+  id: number;
+  player: number | Player;
+  missionSlug: string;
+  completedAt: string;
+  /**
+   * Summary of what happened: { rewardsSummary: [...], statChanges: { energy: -2, credits: +15 } }
+   */
+  outcome?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -302,6 +648,34 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'inventory';
         value: number | Inventory;
+      } | null)
+    | ({
+        relationTo: 'items';
+        value: number | Item;
+      } | null)
+    | ({
+        relationTo: 'game-events';
+        value: number | GameEvent;
+      } | null)
+    | ({
+        relationTo: 'quests';
+        value: number | Quest;
+      } | null)
+    | ({
+        relationTo: 'player-quest-progress';
+        value: number | PlayerQuestProgress;
+      } | null)
+    | ({
+        relationTo: 'missions';
+        value: number | Mission;
+      } | null)
+    | ({
+        relationTo: 'messages';
+        value: number | Message;
+      } | null)
+    | ({
+        relationTo: 'player-mission-history';
+        value: number | PlayerMissionHistory;
       } | null);
   globalSlug?: string | null;
   user:
@@ -423,6 +797,7 @@ export interface PlayersSelect<T extends boolean = true> {
   creditsMax?: T;
   energy?: T;
   energyMax?: T;
+  lastEnergyUpdate?: T;
   health?: T;
   healthMax?: T;
   radiation?: T;
@@ -439,6 +814,18 @@ export interface PlayersSelect<T extends boolean = true> {
   scavenger?: T;
   mechanic?: T;
   smuggler?: T;
+  thugPrestige?: T;
+  thiefPrestige?: T;
+  grifterPrestige?: T;
+  pilotPrestige?: T;
+  medicPrestige?: T;
+  hackerPrestige?: T;
+  technicianPrestige?: T;
+  chemistPrestige?: T;
+  physicistPrestige?: T;
+  scavengerPrestige?: T;
+  mechanicPrestige?: T;
+  smugglerPrestige?: T;
   role?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -465,6 +852,111 @@ export interface InventorySelect<T extends boolean = true> {
   player?: T;
   itemKey?: T;
   quantity?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "items_select".
+ */
+export interface ItemsSelect<T extends boolean = true> {
+  key?: T;
+  name?: T;
+  description?: T;
+  category?: T;
+  maxStack?: T;
+  effects?: T;
+  value?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "game-events_select".
+ */
+export interface GameEventsSelect<T extends boolean = true> {
+  player?: T;
+  eventType?: T;
+  eventData?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "quests_select".
+ */
+export interface QuestsSelect<T extends boolean = true> {
+  skill?: T;
+  prestigeLevel?: T;
+  title?: T;
+  description?: T;
+  requirementType?: T;
+  requirementData?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "player-quest-progress_select".
+ */
+export interface PlayerQuestProgressSelect<T extends boolean = true> {
+  player?: T;
+  quest?: T;
+  status?: T;
+  progress?: T;
+  completedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "missions_select".
+ */
+export interface MissionsSelect<T extends boolean = true> {
+  slug?: T;
+  name?: T;
+  description?: T;
+  category?: T;
+  primarySkill?: T;
+  tier?: T;
+  isActive?: T;
+  costs?: T;
+  requirements?: T;
+  visibilityRequirements?: T;
+  rewards?: T;
+  dependencies?: T;
+  npcSlug?: T;
+  npcName?: T;
+  availabilityMessage?: T;
+  completionMessage?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "messages_select".
+ */
+export interface MessagesSelect<T extends boolean = true> {
+  player?: T;
+  npcSlug?: T;
+  npcName?: T;
+  subject?: T;
+  body?: T;
+  type?: T;
+  isRead?: T;
+  metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "player-mission-history_select".
+ */
+export interface PlayerMissionHistorySelect<T extends boolean = true> {
+  player?: T;
+  missionSlug?: T;
+  completedAt?: T;
+  outcome?: T;
   updatedAt?: T;
   createdAt?: T;
 }

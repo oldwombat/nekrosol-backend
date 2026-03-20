@@ -1,9 +1,12 @@
-import { test, expect, type APIRequestContext } from '@playwright/test'
+import { test, expect, request as playwrightRequest, type APIRequestContext } from '@playwright/test'
 import {
   testPlayer,
+  testPlayer2,
   seedTestPlayer,
   seedTestPlayerWithInventory,
+  seedTestPlayer2,
   cleanupTestPlayer,
+  cleanupTestPlayer2,
 } from '../helpers/seedTestPlayer'
 
 const BASE_URL = 'http://localhost:3000'
@@ -24,6 +27,7 @@ test.describe('POST /api/player-actions', () => {
 
   test.afterAll(async () => {
     await cleanupTestPlayer()
+    await cleanupTestPlayer2()
   })
 
   test('returns 401 when unauthenticated', async ({ request }) => {
@@ -43,13 +47,12 @@ test.describe('POST /api/player-actions', () => {
     expect(res.status()).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
-    expect(body.action).toBe('BEG')
+    expect(body.action).toBe('beg')
     expect(body.player.energy).toBe(9)
     // gain is 1–5 so credits goes from 50 to 51–55
     expect(body.player.credits).toBeGreaterThanOrEqual(51)
     expect(body.player.credits).toBeLessThanOrEqual(55)
-    expect(body.gain).toBeGreaterThanOrEqual(1)
-    expect(body.gain).toBeLessThanOrEqual(5)
+    expect(body.rewardsSummary.length).toBeGreaterThan(0)
   })
 
   test('BEG: returns 400 when energy is 0', async ({ request }) => {
@@ -130,5 +133,93 @@ test.describe('POST /api/player-actions', () => {
     expect(body.inventoryCounts).toBeDefined()
     expect(body.inventoryCounts['SPD-1']).toBe(1)
     expect(body.inventoryCounts['MED-1']).toBe(1)
+  })
+
+  // --- ESCORT tests ---
+
+  test('ESCORT: credits increase and energy decreases by 2', async ({ request }) => {
+    await seedTestPlayer({ energy: 5, credits: 0 })
+    await loginPlayer(request)
+    const res = await request.post(ACTION_URL, { data: { action: 'ESCORT' } })
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.action).toBe('escort')
+    // ESCORT gain is 10–20 credits
+    expect(body.player.credits).toBeGreaterThanOrEqual(10)
+    expect(body.player.credits).toBeLessThanOrEqual(20)
+    expect(body.player.energy).toBe(3) // 5 - 2
+    expect(body.radiationTick).toBeDefined()
+    expect(typeof body.radiationTick.decayed).toBe('number')
+    expect([0, 2]).toContain(body.radiationTick.damage)
+  })
+
+  test('ESCORT: returns 400 when energy is 0', async ({ request }) => {
+    await seedTestPlayer({ energy: 0 })
+    await loginPlayer(request)
+    const res = await request.post(ACTION_URL, { data: { action: 'ESCORT' } })
+    expect(res.status()).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/energy/i)
+  })
+
+  test('ESCORT: running action for player 1 does not affect player 2', async ({ request }) => {
+    await seedTestPlayer({ energy: 5, credits: 0 })
+    await seedTestPlayer2({ energy: 5, credits: 100 })
+
+    // Login and run ESCORT as player 1
+    await loginPlayer(request)
+    const res = await request.post(ACTION_URL, { data: { action: 'ESCORT' } })
+    expect(res.status()).toBe(200)
+
+    // Verify player 2's stats are unchanged by logging in as player 2
+    const ctx2 = await playwrightRequest.newContext()
+    try {
+      const loginRes = await ctx2.post(LOGIN_URL, {
+        data: { email: testPlayer2.email, password: testPlayer2.password },
+      })
+      expect(loginRes.status()).toBe(200)
+      const meRes = await ctx2.get(`${BASE_URL}/api/players/me`)
+      expect(meRes.status()).toBe(200)
+      const me = await meRes.json()
+      expect(me.user.energy).toBe(5)
+      expect(me.user.credits).toBe(100)
+    } finally {
+      await ctx2.dispose()
+    }
+  })
+
+  // --- radiationTick tests ---
+
+  test('BEG: response includes radiationTick with decayed and damage properties', async ({ request }) => {
+    await loginPlayer(request)
+    const res = await request.post(ACTION_URL, { data: { action: 'BEG' } })
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(body.radiationTick).toBeDefined()
+    expect(typeof body.radiationTick.decayed).toBe('number')
+    expect([0, 2]).toContain(body.radiationTick.damage)
+  })
+
+  // --- Radiation sickness tests ---
+
+  test('Radiation sickness: high radiation (>80) deals 2 health damage on BEG', async ({ request }) => {
+    await seedTestPlayer({ radiation: 90, health: 50, energy: 5 })
+    await loginPlayer(request)
+    const res = await request.post(ACTION_URL, { data: { action: 'BEG' } })
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(body.radiationTick.damage).toBe(2)
+    expect(body.player.health).toBeLessThan(50)
+  })
+
+  test('Radiation sickness: low radiation (≤80) deals no health damage on BEG', async ({ request }) => {
+    await seedTestPlayer({ radiation: 50, health: 50, energy: 5 })
+    await loginPlayer(request)
+    const res = await request.post(ACTION_URL, { data: { action: 'BEG' } })
+    expect(res.status()).toBe(200)
+    const body = await res.json()
+    expect(body.radiationTick.damage).toBe(0)
+    expect(body.player.health).toBe(50)
   })
 })

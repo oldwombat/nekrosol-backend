@@ -1,5 +1,11 @@
 import type { CollectionConfig } from 'payload'
 
+type AccessRequest = {
+  user?: {
+    collection?: string
+  }
+}
+
 export const Lore: CollectionConfig = {
   slug: 'lore',
   labels: {
@@ -7,7 +13,12 @@ export const Lore: CollectionConfig = {
     plural: 'Lore',
   },
   access: {
-    read: () => true,
+    read: ({ req }: { req: AccessRequest }) => {
+      // Admin users (Users collection) see everything.
+      if (req.user?.collection === 'users') return true
+      // Unauthenticated visitors and players only see visible entries.
+      return { visible: { not_equals: false } }
+    },
   },
   admin: {
     useAsTitle: 'title',
