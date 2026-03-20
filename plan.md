@@ -332,24 +332,24 @@ Initial NPC: **Sal** (genderless fixer). Faction NPCs added as skills develop:
 
 ### Sprint 3 Todos
 
-**Phase 1 — API client**
-- [ ] `frontend-missions-api` — Add `api.game.missions()` call to `lib/api.ts`
-- [ ] `frontend-messages-api` — Add `api.game.messages()` + `markMessageRead()` to `lib/api.ts`
+**Phase 1 — API client** ✅
+- [x] `frontend-missions-api` — Add `api.game.missions()` call to `lib/api.ts`
+- [x] `frontend-messages-api` — Add `api.game.messages()` + `markMessageRead()` to `lib/api.ts`
 
-**Phase 2 — Missions UI**
-- [ ] `frontend-missions-hook` — `hooks/useMissions.ts` (fetch + refetch after action)
-- [ ] `frontend-missions-component` — Update `HomeMissions.tsx` to use live data (available / locked states, `blockedReason` tooltip)
-- [ ] `frontend-home-data-cleanup` — Remove static `missionItems` from `home-data.ts`
+**Phase 2 — Missions UI** ✅
+- [x] `frontend-missions-hook` — missions loaded in `useHomeAuth` with auto-reload after each action
+- [x] `frontend-missions-component` — Updated `HomeMissions.tsx` to use live data (available / locked states, `blockedReason` display)
+- [x] `frontend-home-data-cleanup` — Static `missionItems`, `MissionItem`, `ActionType` removed from `home-data.ts`
 
-**Phase 3 — Energy countdown**
-- [ ] `frontend-energy-countdown` — `hooks/useEnergyCountdown.ts` + update `HomeStats.tsx`
+**Phase 3 — Energy countdown** ✅
+- [x] `frontend-energy-countdown` — `hooks/use-energy-countdown.ts` + energy regen label in `HomeStats.tsx`
 
-**Phase 4 — NPC Messages**
-- [ ] `frontend-messages-screen` — Basic inbox screen with read/unread states
-- [ ] `frontend-messages-tab` — Add to tab layout
+**Phase 4 — NPC Messages** ✅
+- [x] `frontend-messages-screen` — `app/(tabs)/messages.tsx` inbox with read/unread states
+- [x] `frontend-messages-tab` — Added Messages tab to layout; unread badge on welcome line
 
-**Phase 5 — Tests**
-- [ ] `frontend-missions-e2e` — Update frontend Playwright tests to cover live missions (not hardcoded text)
+**Phase 5 — Tests** ✅
+- [x] `frontend-missions-e2e` — Frontend Playwright tests updated for live missions (9/9 passing)
 - [ ] `missions-api-tests` — Backend Playwright E2E for `GET /api/missions`
 - [ ] `energy-regen-tests` — Vitest unit tests for `calculateCurrentEnergy` (pure function)
 

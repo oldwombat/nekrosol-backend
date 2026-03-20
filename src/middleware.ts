@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 
 // Custom game API routes that need explicit CORS headers.
 // Payload CMS handles CORS for its own routes ([...slug]/route.ts).
-const CUSTOM_API_ROUTES = /^\/api\/(missions|messages|player-actions|player-inventory|player-quests|player-prestige)/
+const CUSTOM_API_ROUTES = /^\/api\/(missions|messages|player-actions|player-inventory|player-quests|player-prestige|shop)/
 
 function getAllowedOrigins(): string[] {
   return [
@@ -54,5 +54,6 @@ export const config = {
     '/api/player-inventory/:path*',
     '/api/player-quests/:path*',
     '/api/player-prestige/:path*',
+    '/api/shop/:path*',
   ],
 }

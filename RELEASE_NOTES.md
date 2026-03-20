@@ -110,10 +110,13 @@ All 28 backend E2E tests green on port 3000.
 **Sprint 3 — Frontend Integration: ✅ COMPLETE**
 - `GET /api/missions` wired — `HomeMissions.tsx` now uses live data from backend; hardcoded `missionItems` removed
 - Energy countdown — `useEnergyCountdown` hook drives a live "⚡ next regen in M:SS" counter below the energy bar
+- **Energy display fix** — `useEnergyCountdown` now also returns `liveEnergy` (stored + elapsed ticks since `lastEnergyUpdate`). `HomeStats` uses `liveEnergy` for the displayed value, so energy bar updates every tick without any API polling
 - NPC Messages tab — new `/messages` screen with inbox list and mark-as-read; unread badge on welcome line
 - `home-auth.ts` refactored — `missions` + `unreadMessages` state added; `ActionType` coupling removed
 - Locations card removed from Play tab (redundant with World tab)
-- **CORS middleware** — `src/middleware.ts` added to inject `Access-Control-Allow-Origin` + `Access-Control-Allow-Credentials` on all custom game API routes (`/api/missions`, `/api/messages`, `/api/player-*`). Root cause of silent mission loading failure in Playwright browser context
+- **CORS middleware** — `src/middleware.ts` added to inject `Access-Control-Allow-Origin` + `Access-Control-Allow-Credentials` on all custom game API routes (`/api/missions`, `/api/messages`, `/api/player-*`, `/api/shop`). Root cause of silent mission loading failure in Playwright browser context
+- **Blackglass Market shop** — `GET /api/shop` returns item catalog; `POST /api/shop/purchase` validates credits, deducts, and adds to inventory with rollback on failure. `explore.tsx` "Enter →" button opens a bottom-sheet shop modal with buy buttons, live credit display, and purchase feedback
+- Item seed (`src/seed/seedItems.ts`) — 5 items seeded idempotently on signup: SPD-1 (30₵), MED-1 (25₵), RAD-X (15₵), scrap-metal (3₵), wire-coil (5₵)
 - 9/9 frontend Playwright tests passing (added Messages tab test; missions test uses live API data)
 
 **Sprint 4 — Backlog (see plan.md):**

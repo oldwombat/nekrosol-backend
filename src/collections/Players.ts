@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { seedQuests } from '../seed/seedQuests'
 import { seedMissions } from '../seed/seedMissions'
+import { seedItems } from '../seed/seedItems'
 
 type AccessRequest = {
   user?: {
@@ -199,9 +200,10 @@ export const Players: CollectionConfig = {
         if (!playerId) return result
 
         try {
-          // Ensure all quest and mission definitions exist (idempotent)
+          // Ensure all quest, mission, and item definitions exist (idempotent)
           await seedQuests(payload)
           await seedMissions(payload)
+          await seedItems(payload)
 
           // Fetch all quests to create progress rows
           const allQuests = await payload.find({
