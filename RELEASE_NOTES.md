@@ -384,3 +384,22 @@ _Frontend (`nekrosol-frontend`):_
 - `GET /api/missions` endpoint has no dedicated E2E tests yet
 - Lazy energy/radiation regen has no Vitest unit tests yet
 - No E2E tests for trial/quest system yet
+
+---
+
+## Sprint 7 — Activity Log & Toast Notifications
+
+_Backend (`nekrosol-backend`):_
+- **Messages collection** — added `activity_log` type option alongside existing NPC message types
+- **`src/lib/activity-log.ts`** — new helper: `createActivityLog(playerId, payload, entries[])` bulk-writes activity log Messages with `type: activity_log`, `npcSlug: system`, `isRead: true` (never inflates unread badge); `diffInventory(before, after)` pure fn computes inventory deltas from count snapshots
+- **`POST /api/player-actions`** — snapshots inventory before consuming item costs; after mission execution, computes `inventoryDeltas` (added/removed items); writes `activity_log` Messages for: health damage, health restore, radiation exposure, inventory adds/removes (non-fatal, errors logged but don't fail the request); response now includes `inventoryDeltas: Array<{itemKey, quantity, direction}>` alongside existing `statChanges`
+
+_Frontend (`nekrosol-frontend`):_
+- **`hooks/use-toast-queue.tsx`** — `ToastProvider` React context + `useToasts()` hook; queue holds up to 3 toasts, auto-dismissed after 2.8s; each toast has a colour: `red` (damage/radiation gain), `green` (heal/energy regen/radiation decay), `blue` (inventory change)
+- **`components/ToastOverlay.tsx`** — animated pill toasts rendered above all screens; fade in 150ms / hold 2.1s / fade out 500ms using `Animated` (no external libraries); positioned `bottom: 88` above the tab bar
+- **`_layout.tsx`** — tab navigator wrapped in `ToastProvider`; `<ToastOverlay />` rendered as a sibling to `<Tabs>` so toasts appear on all tabs
+- **`home-auth.ts`** — `onAction()` now dispatches toasts after each player action: health damage → red, health restore → green, radiation gain → red, inventory add → blue, inventory remove → blue
+- **`use-energy-countdown.ts`** — fires a green toast when passive energy regen ticks (not on initial mount)
+- **`use-radiation-countdown.ts`** — fires a green toast when passive radiation decay ticks (not on initial mount)
+- **`lib/api.ts`** — `ActionResult` type updated to include `statChanges`, `rewardsSummary`, `inventoryDeltas`, `newMessages`; `NpcMessage.type` narrowed to a union including `activity_log`; `NpcMessage.metadata.category` typed as `damage | heal | inventory | info`
+- **Messages tab** — "📋 Show Log / Hide Log" toggle (default: off); when off, `activity_log` messages are filtered out; when on, log entries appear with category-colour accent border (red/green/blue/grey), smaller padding, dimmer opacity; NPC/player messages unaffected
