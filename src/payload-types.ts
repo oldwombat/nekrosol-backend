@@ -578,7 +578,7 @@ export interface Message {
   npcName: string;
   subject: string;
   body: string;
-  type: 'mission_available' | 'trial_completed' | 'faction_intro' | 'combat_result' | 'general';
+  type: 'mission_available' | 'trial_completed' | 'faction_intro' | 'combat_result' | 'activity_log' | 'general';
   isRead?: boolean | null;
   /**
    * Optional context data. E.g. { missionSlug: "patrol" } or { questId: "abc123" }

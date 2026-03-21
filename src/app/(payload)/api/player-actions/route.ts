@@ -12,6 +12,7 @@ import {
   createMissionAvailableMessage,
 } from '@/lib/mission-engine'
 import { consumeInventoryItem, getPlayerInventory } from '@/lib/player-inventory'
+import { createActivityLog, diffInventory, type ActivityEntry } from '@/lib/activity-log'
 
 /**
  * POST /api/player-actions
@@ -28,6 +29,7 @@ import { consumeInventoryItem, getPlayerInventory } from '@/lib/player-inventory
  *   statChanges: Record<string, number>,
  *   player: Player,
  *   inventoryCounts: Record<string, number>,
+ *   inventoryDeltas: Array<{ itemKey: string; quantity: number; direction: 'add' | 'remove' }>,
  *   newMessages: number,
  * }
  */
@@ -81,13 +83,16 @@ export const POST = async (request: Request) => {
 
     const mission = missionsResult.docs[0] as Mission
 
+    // Snapshot inventory before any changes so we can compute deltas later
+    const preInventory = await getPlayerInventory(payload, player.id)
+    const prevCounts = preInventory.counts
+
     // Check item costs before running (consume inventory items)
     const costs = Array.isArray(mission.costs) ? mission.costs as Array<{ type: string; itemKey?: string; quantity?: number }> : []
     const itemCosts = costs.filter((c) => c.type === 'item')
     for (const cost of itemCosts) {
       if (!cost.itemKey) continue
-      const inventoryCheck = await getPlayerInventory(payload, player.id)
-      const have = inventoryCheck.counts[cost.itemKey] ?? 0
+      const have = prevCounts[cost.itemKey] ?? 0
       if (have < (cost.quantity ?? 1)) {
         return Response.json({ error: `No ${cost.itemKey} items left` }, { status: 400 })
       }
@@ -165,6 +170,36 @@ export const POST = async (request: Request) => {
     }
 
     const inventory = await getPlayerInventory(payload, player.id)
+    const inventoryDeltas = diffInventory(prevCounts, inventory.counts)
+
+    // Write activity log entries for notable events (non-fatal)
+    try {
+      const sc = result.statChanges as Record<string, number>
+      const logEntries: ActivityEntry[] = []
+
+      if ((sc.health ?? 0) < 0) {
+        logEntries.push({ subject: 'Health Damage', body: `${Math.abs(sc.health!)} health lost.`, category: 'damage' })
+      }
+      if ((sc.health ?? 0) > 0) {
+        logEntries.push({ subject: 'Health Restored', body: `+${sc.health} health restored.`, category: 'heal' })
+      }
+      if ((sc.radiation ?? 0) > 0) {
+        logEntries.push({ subject: 'Radiation Exposure', body: `Absorbed ${sc.radiation} radiation.`, category: 'damage' })
+      }
+      for (const delta of inventoryDeltas) {
+        if (delta.direction === 'add') {
+          logEntries.push({ subject: 'Item Acquired', body: `Received ${delta.quantity}× ${delta.itemKey}.`, category: 'inventory' })
+        } else {
+          logEntries.push({ subject: 'Item Consumed', body: `Used ${delta.quantity}× ${delta.itemKey}.`, category: 'inventory' })
+        }
+      }
+
+      if (logEntries.length > 0) {
+        await createActivityLog(player.id, payload, logEntries)
+      }
+    } catch (logErr) {
+      console.error('[player-actions] activity log error', logErr)
+    }
 
     return Response.json({
       ok: true,
@@ -173,6 +208,7 @@ export const POST = async (request: Request) => {
       statChanges: result.statChanges,
       player: finalPlayer,
       inventoryCounts: inventory.counts,
+      inventoryDeltas,
       newMessages,
     })
   } catch (error) {

@@ -83,6 +83,7 @@ export const Messages: CollectionConfig = {
         { label: 'Trial Completed', value: 'trial_completed' },
         { label: 'Faction Intro', value: 'faction_intro' },
         { label: 'Combat Result', value: 'combat_result' },
+        { label: 'Activity Log', value: 'activity_log' },
         { label: 'General', value: 'general' },
       ],
     },
