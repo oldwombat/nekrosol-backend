@@ -109,6 +109,17 @@ export const Missions: CollectionConfig = {
       admin: { description: 'Inactive missions are hidden from all players regardless of visibility rules.' },
     },
     {
+      name: 'hideAfterCompletion',
+      label: 'Hide After Completion',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description:
+          'One-time missions: once the player completes this mission, it disappears from their list permanently. ' +
+          'Used for tutorial missions delivered via NPC messages.',
+      },
+    },
+    {
       name: 'costs',
       type: 'json',
       required: false,

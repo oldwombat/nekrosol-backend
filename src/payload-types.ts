@@ -80,6 +80,8 @@ export interface Config {
     missions: Mission;
     messages: Message;
     'player-mission-history': PlayerMissionHistory;
+    'bank-deposits': BankDeposit;
+    'player-npc-interactions': PlayerNpcInteraction;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -99,6 +101,8 @@ export interface Config {
     missions: MissionsSelect<false> | MissionsSelect<true>;
     messages: MessagesSelect<false> | MessagesSelect<true>;
     'player-mission-history': PlayerMissionHistorySelect<false> | PlayerMissionHistorySelect<true>;
+    'bank-deposits': BankDepositsSelect<false> | BankDepositsSelect<true>;
+    'player-npc-interactions': PlayerNpcInteractionsSelect<false> | PlayerNpcInteractionsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -233,6 +237,10 @@ export interface Player {
   healthMax: number;
   radiation: number;
   radiationMax: number;
+  /**
+   * Timestamp of last radiation decay sync. Used for lazy radiation decay calculation.
+   */
+  lastRadiationUpdate?: string | null;
   thug: number;
   thief: number;
   grifter: number;
@@ -257,6 +265,10 @@ export interface Player {
   scavengerPrestige?: number | null;
   mechanicPrestige?: number | null;
   smugglerPrestige?: number | null;
+  /**
+   * Player-chosen rank title shown on their profile. Must be a rank the player has earned.
+   */
+  displayTitle?: string | null;
   role: string;
   updatedAt: string;
   createdAt: string;
@@ -473,6 +485,10 @@ export interface Mission {
    */
   isActive?: boolean | null;
   /**
+   * One-time missions: once the player completes this mission, it disappears from their list permanently. Used for tutorial missions delivered via NPC messages.
+   */
+  hideAfterCompletion?: boolean | null;
+  /**
    * Array of cost objects deducted when the mission runs. Examples: [{type:"energy",amount:2}] [{type:"credits",amount:10}] [{type:"health",amount:5}]
    */
   costs?:
@@ -607,6 +623,52 @@ export interface PlayerMissionHistory {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "bank-deposits".
+ */
+export interface BankDeposit {
+  id: number;
+  player: number | Player;
+  /**
+   * Credits deposited (already deducted from player at deposit time)
+   */
+  amount: number;
+  /**
+   * Decimal rate at time of deposit. e.g. 0.25 = 25%
+   */
+  interestRate: number;
+  /**
+   * When the deposit was made
+   */
+  depositedAt: string;
+  /**
+   * When the deposit can be collected (depositedAt + term)
+   */
+  maturesAt: string;
+  status: 'active' | 'collected';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "player-npc-interactions".
+ */
+export interface PlayerNpcInteraction {
+  id: number;
+  player: number | Player;
+  /**
+   * NPC identifier slug, e.g. 'vex', 'the-broker', 'sal'
+   */
+  npcId: string;
+  firstInteractionAt: string;
+  /**
+   * Total number of times this player has talked to this NPC
+   */
+  interactionCount: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -676,6 +738,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'player-mission-history';
         value: number | PlayerMissionHistory;
+      } | null)
+    | ({
+        relationTo: 'bank-deposits';
+        value: number | BankDeposit;
+      } | null)
+    | ({
+        relationTo: 'player-npc-interactions';
+        value: number | PlayerNpcInteraction;
       } | null);
   globalSlug?: string | null;
   user:
@@ -802,6 +872,7 @@ export interface PlayersSelect<T extends boolean = true> {
   healthMax?: T;
   radiation?: T;
   radiationMax?: T;
+  lastRadiationUpdate?: T;
   thug?: T;
   thief?: T;
   grifter?: T;
@@ -826,6 +897,7 @@ export interface PlayersSelect<T extends boolean = true> {
   scavengerPrestige?: T;
   mechanicPrestige?: T;
   smugglerPrestige?: T;
+  displayTitle?: T;
   role?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -920,6 +992,7 @@ export interface MissionsSelect<T extends boolean = true> {
   primarySkill?: T;
   tier?: T;
   isActive?: T;
+  hideAfterCompletion?: T;
   costs?: T;
   requirements?: T;
   visibilityRequirements?: T;
@@ -957,6 +1030,32 @@ export interface PlayerMissionHistorySelect<T extends boolean = true> {
   missionSlug?: T;
   completedAt?: T;
   outcome?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "bank-deposits_select".
+ */
+export interface BankDepositsSelect<T extends boolean = true> {
+  player?: T;
+  amount?: T;
+  interestRate?: T;
+  depositedAt?: T;
+  maturesAt?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "player-npc-interactions_select".
+ */
+export interface PlayerNpcInteractionsSelect<T extends boolean = true> {
+  player?: T;
+  npcId?: T;
+  firstInteractionAt?: T;
+  interactionCount?: T;
   updatedAt?: T;
   createdAt?: T;
 }

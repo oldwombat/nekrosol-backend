@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import type { Mission, Player } from '../../../../payload-types'
 import { isMissionVisible, canRunMission } from '../../../../lib/mission-engine'
 import { syncEnergyRegen } from '../../../../lib/energy'
+import { syncRadiationDecay } from '../../../../lib/radiation'
 
 /**
  * GET /api/missions
@@ -34,8 +35,9 @@ export async function GET() {
 
     const player = user as unknown as Player
 
-    // Sync energy regeneration before evaluating requirements
-    const freshPlayer = await syncEnergyRegen(player.id, payload)
+    // Sync energy regeneration and radiation decay before evaluating requirements
+    const energySynced = await syncEnergyRegen(player.id, payload)
+    const freshPlayer = await syncRadiationDecay(energySynced.id, payload)
 
     // Fetch all active missions
     const missionsResult = await payload.find({

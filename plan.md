@@ -306,57 +306,61 @@ Initial NPC: **Sal** (genderless fixer). Faction NPCs added as skills develop:
 
 ---
 
-## Sprint 3 — Frontend Integration (NEXT)
+## Sprint 3 — Frontend Integration ✅ COMPLETE
 
-**The problem:** Sprint 2 fully replaced the hardcoded backend mission system with a data-driven engine, but the frontend hasn't been updated yet. The Expo app still uses a static `missionItems` array in `home-data.ts` — it calls `GET /api/missions` zero times, shows no NPC messages, and has no energy countdown timer. Players can't see the real mission list.
+All tasks done. See RELEASE_NOTES.md for details.
+
+---
+
+## Sprint 4 — Location Mechanics ✅ COMPLETE
+
+Interactive modals for all World tab locations + one-time tutorial mission system.
+
+### Backend
+- `BankDeposits` + `PlayerNPCInteractions` collections created and registered
+- `GET /api/bank`, `POST /api/bank/deposit`, `POST /api/bank/withdraw` — lazy maturity, one deposit per player
+- `POST /api/npc/interact` — dialogue + mission unlock (Vex → `courier-run`, The Broker → `black-market-recon`)
+- `npc_interaction` visibility requirement type added to mission engine
+- 3 new missions: `reactor-search`, `courier-run`, `black-market-recon`
+- 2 new items: `fuses` (8₵), `reactor-core` (150₵)
+- `hideAfterCompletion` field on Missions — `spd-1`, `med-1`, `rad-x` marked as one-time tutorial missions
+- Tutorial welcome message from Sal sent to every new player on signup
+- Migration `20260320_134811.ts` — `hide_after_completion` column added
+- 10 new E2E tests in `bank-npc.e2e.spec.ts` (all green)
+
+### Frontend (`nekrosol-frontend`)
+- `EmberBankModal`, `DustlineTavernModal`, `ReactorDistrictModal` added to `explore.tsx`
+- Location card buttons and badges updated per location type
+- Radiation levels corrected: Blackglass Market LOW 5%, Reactor District MEDIUM 35%
+- **Mission modal removed** — selection now drives the right panel only; right panel shows costs + rewards
+
+---
+
+## Sprint 5 — Tutorial Mission UX 🔜 NEXT
+
+**The problem:** The three one-time tutorial missions (spd-1, med-1, rad-x) are now `hideAfterCompletion: true` and new players receive a Sal welcome message pointing them to Blackglass Market. However the mission UX doesn't guide them through the steps clearly:
+- Locked state shows raw "Need 1x RAD-X in inventory (have 0)" — no hint where to buy it
+- Available state shows "Run Mission" — doesn't communicate this is a tutorial task to complete
+- Description text doesn't walk through the steps
 
 ### Goals
-1. **Wire `GET /api/missions`** — replace `missionItems` in `home-data.ts` + `HomeMissions.tsx` with live API data
-2. **Energy countdown** — use `lastEnergyUpdate` + `regenRateMs` from `GET /api/players/me` to show a live countdown to next regen tick
-3. **NPC messages badge** — show unread count on a Messages screen; basic inbox list
+1. Surface `hideAfterCompletion` in `GET /api/missions` response and `LiveMission` frontend type
+2. Update descriptions for `spd-1`, `med-1`, `rad-x` to be step-by-step guides (go to Market → buy → return)
+3. Frontend: show **"Complete Tutorial"** button instead of "Run Mission" for `hideAfterCompletion` missions
+4. Frontend: locked tutorial missions show a friendly hint ("Purchase from Blackglass Market") instead of the raw blocked reason
 
-### Files to change (nekrosol-frontend)
-
-| Action | File | Change |
-|---|---|---|
-| Modify | `lib/api.ts` | Add `api.game.missions()` → `GET /api/missions` |
-| Modify | `lib/api.ts` | Add `api.game.messages()` → `GET /api/messages` |
-| Modify | `lib/api.ts` | Add `api.game.markMessageRead(id)` → `POST /api/messages/[id]/read` |
-| Modify | `app/(tabs)/home-data.ts` | Remove static `missionItems` array |
-| Modify | `app/(tabs)/components/HomeMissions.tsx` | Accept live mission data from API; map API response to UI (available/locked states) |
-| Create | `hooks/useMissions.ts` | SWR/React Query hook for mission list with auto-refresh after action |
-| Create | `hooks/useEnergyCountdown.ts` | Pure countdown hook: `lastEnergyUpdate + regenRateMs → secondsUntilNextRegen` |
-| Modify | `app/(tabs)/components/HomeStats.tsx` | Show energy countdown below energy bar |
-| Create | `app/(tabs)/messages.tsx` | Basic NPC inbox screen: list messages, mark as read |
-| Modify | `app/(tabs)/_layout.tsx` | Add Messages tab (or badge on existing tab) |
-
-### Sprint 3 Todos
-
-**Phase 1 — API client** ✅
-- [x] `frontend-missions-api` — Add `api.game.missions()` call to `lib/api.ts`
-- [x] `frontend-messages-api` — Add `api.game.messages()` + `markMessageRead()` to `lib/api.ts`
-
-**Phase 2 — Missions UI** ✅
-- [x] `frontend-missions-hook` — missions loaded in `useHomeAuth` with auto-reload after each action
-- [x] `frontend-missions-component` — Updated `HomeMissions.tsx` to use live data (available / locked states, `blockedReason` display)
-- [x] `frontend-home-data-cleanup` — Static `missionItems`, `MissionItem`, `ActionType` removed from `home-data.ts`
-
-**Phase 3 — Energy countdown** ✅
-- [x] `frontend-energy-countdown` — `hooks/use-energy-countdown.ts` + energy regen label in `HomeStats.tsx`
-
-**Phase 4 — NPC Messages** ✅
-- [x] `frontend-messages-screen` — `app/(tabs)/messages.tsx` inbox with read/unread states
-- [x] `frontend-messages-tab` — Added Messages tab to layout; unread badge on welcome line
-
-**Phase 5 — Tests** ✅
-- [x] `frontend-missions-e2e` — Frontend Playwright tests updated for live missions (9/9 passing)
-- [ ] `missions-api-tests` — Backend Playwright E2E for `GET /api/missions`
-- [ ] `energy-regen-tests` — Vitest unit tests for `calculateCurrentEnergy` (pure function)
+### Tasks
+- [ ] `s5-api-expose-hide-flag` — Add `hideAfterCompletion` to missions API response + `LiveMission` type
+- [ ] `s5-tutorial-descriptions` — Update spd-1/med-1/rad-x descriptions in `missionDefinitions.ts` + DB
+- [ ] `s5-complete-tutorial-button` — Frontend: "Complete Tutorial" label for `hideAfterCompletion` missions when available
+- [ ] `s5-locked-hint` — Frontend: show shop location hint for locked tutorial missions
 
 ---
 
 ## Backlog / Future Sprints
 
+- [ ] `missions-api-tests` — Backend Playwright E2E for `GET /api/missions`
+- [ ] `energy-regen-tests` — Vitest unit tests for `calculateCurrentEnergy` (pure function)
 - [ ] `skill-xp-awards` — Award skill XP on mission completion (Thug/Pilot from escort, Grifter from beg, etc.)
 - [ ] `trial-type-mission-count` — Wire `mission_count` trial requirement type to `PlayerMissionHistory` data
 - [ ] `trial-type-item-consume` — Wire `item_consume` trial requirement type to `GameEvents` item_consumed log
@@ -366,7 +370,6 @@ Initial NPC: **Sal** (genderless fixer). Faction NPCs added as skills develop:
 - [ ] `player-travel` — Location travel endpoint with radiation/energy costs
 - [ ] `display-title` — `displayTitle` field on Players for chosen prestige rank title
 - [ ] `rate-limiting` — Rate limit on player-actions (20 req/min per player)
-- [ ] `shop-endpoint` — Buy items from credit pool
 - [ ] `turso-migration` — Switch DB adapter to Turso for production deploy
 - [ ] `faction-npcs` — Additional NPC personas: Pit Boss (Thug), Ghost (Hacker), Crow (Smuggler), etc.
 - [ ] `websocket-layer` — Ably/Pusher for real-time: PvP events, live chat, mission unlock push notifications

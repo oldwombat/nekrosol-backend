@@ -61,13 +61,26 @@ export async function syncEnergyRegen(
     : new Date()
 
   const energyMax = (player.energyMax as number) ?? 10
+  const currentStoredEnergy = (player.energy as number) ?? 0
   const { currentEnergy, gainedSinceUpdate } = calculateCurrentEnergy(
-    player.energy as number,
+    currentStoredEnergy,
     energyMax,
     lastUpdate,
   )
 
-  if (gainedSinceUpdate === 0) return player
+  // Self-heal: if lastEnergyUpdate is missing but energy is below max,
+  // initialise the regen clock so the frontend countdown can start.
+  if (gainedSinceUpdate === 0) {
+    if (!player.lastEnergyUpdate && currentStoredEnergy < energyMax) {
+      return await payload.update({
+        collection: 'players',
+        id: playerId,
+        data: { lastEnergyUpdate: new Date().toISOString() },
+        overrideAccess: true,
+      }) as Player
+    }
+    return player
+  }
 
   const updated = await payload.update({
     collection: 'players',

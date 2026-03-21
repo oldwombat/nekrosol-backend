@@ -17,6 +17,8 @@ import { PlayerQuestProgress } from './collections/PlayerQuestProgress'
 import { Missions } from './collections/Missions'
 import { Messages } from './collections/Messages'
 import { PlayerMissionHistory } from './collections/PlayerMissionHistory'
+import { BankDeposits } from './collections/BankDeposits'
+import { PlayerNPCInteractions } from './collections/PlayerNPCInteractions'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -41,6 +43,8 @@ export default buildConfig({
     Missions,
     Messages,
     PlayerMissionHistory,
+    BankDeposits,
+    PlayerNPCInteractions,
   ],
   // CORS: explicitly list allowed origins. Never use '*' — that allows any
   // site to make credentialed requests and steal player session cookies.

@@ -32,6 +32,7 @@ export async function seedMissions(payload: Payload): Promise<void> {
         primarySkill: def.primarySkill,
         tier: def.tier,
         isActive: def.isActive,
+        hideAfterCompletion: def.hideAfterCompletion ?? false,
         costs: def.costs,
         requirements: def.requirements,
         visibilityRequirements: def.visibilityRequirements,

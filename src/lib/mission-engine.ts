@@ -33,11 +33,13 @@ export interface RequirementStatMin { type: 'stat_min'; stat: StatName; value: n
 export interface RequirementStatMax { type: 'stat_max'; stat: StatName; value: number }
 export interface RequirementMissionCount { type: 'mission_completed_count'; missionSlug: string; count: number }
 export interface RequirementItemInInventory { type: 'item_in_inventory'; itemKey: string; quantity: number }
+export interface RequirementNpcInteraction { type: 'npc_interaction'; npcId: string }
 export type Requirement =
   | RequirementStatMin
   | RequirementStatMax
   | RequirementMissionCount
   | RequirementItemInInventory
+  | RequirementNpcInteraction
 
 export interface CostEnergy { type: 'energy'; amount: number }
 export interface CostCredits { type: 'credits'; amount: number }
@@ -88,6 +90,7 @@ async function checkRequirement(
   player: Player,
   missionCountCache: Record<string, number>,
   inventoryCounts: Record<string, number>,
+  npcInteractions: Set<string>,
 ): Promise<BlockedReason | null> {
   switch (req.type) {
     case 'stat_min': {
@@ -133,6 +136,16 @@ async function checkRequirement(
       }
       return null
     }
+
+    case 'npc_interaction': {
+      if (!npcInteractions.has(req.npcId)) {
+        return {
+          type: req.type,
+          message: `Talk to ${req.npcId} at the Dustline Tavern first`,
+        }
+      }
+      return null
+    }
   }
 }
 
@@ -161,8 +174,25 @@ async function checkRequirements(
     missionCountCache[slug] = result.totalDocs
   }
 
+  // Pre-fetch NPC interactions for any npc_interaction requirements (single batch query)
+  const npcInteractions = new Set<string>()
+  const npcIdsNeeded = requirements
+    .filter((r): r is RequirementNpcInteraction => r.type === 'npc_interaction')
+    .map((r) => r.npcId)
+
+  if (npcIdsNeeded.length > 0) {
+    const result = await payload.find({
+      collection: 'player-npc-interactions',
+      where: { player: { equals: player.id } },
+      limit: 100,
+      depth: 0,
+      overrideAccess: true,
+    })
+    result.docs.forEach((doc: { npcId?: unknown }) => npcInteractions.add(doc.npcId as string))
+  }
+
   for (const requirement of requirements) {
-    const reason = await checkRequirement(requirement, player, missionCountCache, inventoryCounts)
+    const reason = await checkRequirement(requirement, player, missionCountCache, inventoryCounts, npcInteractions)
     if (reason) blocked.push(reason)
   }
 
@@ -181,6 +211,18 @@ export async function isMissionVisible(
   payload: Payload,
 ): Promise<boolean> {
   if (!mission.isActive) return false
+
+  // One-time tutorial missions disappear once the player has completed them
+  if (mission.hideAfterCompletion) {
+    const history = await payload.find({
+      collection: 'player-mission-history',
+      where: { and: [{ player: { equals: player.id } }, { missionSlug: { equals: mission.slug } }] },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (history.totalDocs > 0) return false
+  }
 
   const visReqs = parseJson<Requirement>(mission.visibilityRequirements)
   if (visReqs.length === 0) return true

@@ -67,6 +67,26 @@ const itemDefinitions: ItemDef[] = [
     effects: {},
     value: 5,
   },
+  {
+    key: 'fuses',
+    name: 'Fuses',
+    description:
+      'Industrial ceramic fuses scavenged from reactor control panels. Fragile and hard to find intact.',
+    category: 'material',
+    maxStack: 30,
+    effects: {},
+    value: 8,
+  },
+  {
+    key: 'reactor-core',
+    name: 'Reactor Core Fragment',
+    description:
+      'A shielded fragment of fissile material from a decommissioned reactor. Rare, dangerous to handle, and worth a fortune to the right buyer.',
+    category: 'material',
+    maxStack: 5,
+    effects: {},
+    value: 150,
+  },
 ]
 
 export async function seedItems(payload: Payload): Promise<void> {

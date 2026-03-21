@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 
 import type { Mission, Player } from '@/payload-types'
 import { syncEnergyRegen } from '@/lib/energy'
+import { syncRadiationDecay } from '@/lib/radiation'
 import {
   canRunMission,
   executeMission,
@@ -25,7 +26,6 @@ import { consumeInventoryItem, getPlayerInventory } from '@/lib/player-inventory
  *   action: string,
  *   rewardsSummary: string[],
  *   statChanges: Record<string, number>,
- *   radiationTick: { decayed: number, damage: number },
  *   player: Player,
  *   inventoryCounts: Record<string, number>,
  *   newMessages: number,
@@ -55,8 +55,11 @@ export const POST = async (request: Request) => {
     // Normalize to lowercase for slug lookup
     const actionSlug = rawAction.toLowerCase()
 
-    // Sync energy regen before any checks
-    const player = await syncEnergyRegen(user.id, payload) as Player
+    // Sync energy regen and radiation decay before any checks
+    const player = await syncRadiationDecay(
+      (await syncEnergyRegen(user.id, payload)).id,
+      payload,
+    ) as Player
 
     // Look up mission from the database
     const missionsResult = await payload.find({
@@ -109,27 +112,35 @@ export const POST = async (request: Request) => {
     // Execute the mission (applies stat costs + rewards, records history)
     const result = await executeMission(player, mission, payload)
 
-    // Radiation tick: every action passively decays radiation by 1.
-    // If radiation was > 80 before decay, radiation sickness deals -2 health.
     const postActionPlayer = result.playerAfter
-    const postActionRadiation = postActionPlayer.radiation ?? 0
-    const tickDamage: 0 | 2 = postActionRadiation > 80 ? 2 : 0
-    const radiationTick = { decayed: 1, damage: tickDamage }
 
-    const tickData: Record<string, number> = {
-      radiation: Math.max(0, postActionRadiation - 1),
-    }
-    if (tickDamage > 0) {
-      tickData.health = Math.max(0, (postActionPlayer.health ?? 0) - tickDamage)
+    // Apply any remaining housekeeping updates (energy regen clock init).
+    // Radiation is now managed by the lazy syncRadiationDecay pattern — no per-action tick.
+    const tickData: Record<string, number | string> = {}
+
+    // Start the regen clock the first time energy drops below max.
+    // Without this, lastEnergyUpdate stays null and the frontend countdown never runs.
+    const energyAfter = (postActionPlayer.energy as number) ?? 0
+    const energyMax = (postActionPlayer.energyMax as number) ?? 10
+    if (energyAfter < energyMax && !postActionPlayer.lastEnergyUpdate) {
+      tickData.lastEnergyUpdate = new Date().toISOString()
     }
 
-    const finalPlayer = await payload.update({
-      collection: 'players',
-      id: player.id,
-      data: tickData,
-      overrideAccess: true,
-      depth: 0,
-    }) as Player
+    // Start the radiation decay clock the first time the player has radiation.
+    const radiationAfter = (postActionPlayer.radiation as number) ?? 0
+    if (radiationAfter > 0 && !postActionPlayer.lastRadiationUpdate) {
+      tickData.lastRadiationUpdate = new Date().toISOString()
+    }
+
+    const finalPlayer = Object.keys(tickData).length > 0
+      ? await payload.update({
+          collection: 'players',
+          id: player.id,
+          data: tickData,
+          overrideAccess: true,
+          depth: 0,
+        }) as Player
+      : postActionPlayer as Player
 
     // Check for newly available missions and notify via NPC messages
     let newMessages = 0
@@ -160,7 +171,6 @@ export const POST = async (request: Request) => {
       action: actionSlug,
       rewardsSummary: result.rewardsSummary,
       statChanges: result.statChanges,
-      radiationTick,
       player: finalPlayer,
       inventoryCounts: inventory.counts,
       newMessages,

@@ -150,6 +150,17 @@ export const Players: CollectionConfig = {
         readOnly: true,
       },
     },
+    {
+      name: 'lastRadiationUpdate',
+      label: 'Last Radiation Update',
+      type: 'date',
+      required: false,
+      admin: {
+        readOnly: true,
+        description: 'Timestamp of last radiation decay sync. Used for lazy radiation decay calculation.',
+        date: { pickerAppearance: 'dayAndTime' },
+      },
+    },
     // Skills: capped at 100 per prestige level. At 100, player may prestige (resets to 1, increments *Prestige).
     { name: 'thug',        label: 'Thug',        type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
     { name: 'thief',       label: 'Thief',       type: 'number', required: true, defaultValue: 0, min: 0, max: 100 },
@@ -178,6 +189,15 @@ export const Players: CollectionConfig = {
     { name: 'scavengerPrestige',  label: 'Scavenger Prestige',  type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
     { name: 'mechanicPrestige',   label: 'Mechanic Prestige',   type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
     { name: 'smugglerPrestige',   label: 'Smuggler Prestige',   type: 'number', defaultValue: 0, min: 0, max: 4, admin: { readOnly: true } },
+    {
+      name: 'displayTitle',
+      label: 'Display Title',
+      type: 'text',
+      required: false,
+      admin: {
+        description: 'Player-chosen rank title shown on their profile. Must be a rank the player has earned.',
+      },
+    },
     {
       name: 'role',
       label: 'Role',
@@ -227,6 +247,32 @@ export const Players: CollectionConfig = {
           }
 
           payload.logger.info(`[Players] Created ${allQuests.docs.length} quest progress rows for player ${playerId}`)
+
+          // Send tutorial messages introducing the three consumable item missions
+          const tutorialMessages = [
+            {
+              subject: 'Welcome to Nekrosol',
+              body: "You made it. The city doesn't care about you — but I do, a little. Head to Blackglass Market when you need supplies. SPD-1 Stimpaks refill your energy, MED-1 Medpacks patch you up, and RAD-X handles radiation exposure. Buy some, use them — your mission list will show you how. Stay alive out there.",
+            },
+          ]
+
+          for (const msg of tutorialMessages) {
+            await payload.create({
+              collection: 'messages',
+              data: {
+                player: playerId,
+                npcSlug: 'sal',
+                npcName: 'Sal',
+                subject: msg.subject,
+                body: msg.body,
+                type: 'general',
+                isRead: false,
+              },
+              overrideAccess: true,
+            })
+          }
+
+          payload.logger.info(`[Players] Sent tutorial messages to player ${playerId}`)
         } catch (err) {
           payload.logger.error(`[Players] Failed to create quest progress for player ${playerId}: ${err}`)
         }

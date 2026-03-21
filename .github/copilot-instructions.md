@@ -25,6 +25,9 @@
 - Keep privileged logic server-side only; never expose admin operations to frontend clients.
 - When using Local API with a user context, ensure access behavior is explicit (`overrideAccess` choice is intentional and documented).
 
+## Testing & Validation
+- Before running Playwright tests, ensure both the backend and frontend are being served
+
 ## Commands Used Here
 - Install deps: `pnpm install`
 - Dev server: `pnpm dev`

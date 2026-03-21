@@ -1,5 +1,5 @@
 /**
- * missionDefinitions.ts — seed data for the 7 core missions.
+ * missionDefinitions.ts — seed data for all missions.
  *
  * All missions are data-driven and executed by src/lib/mission-engine.ts.
  *
@@ -10,6 +10,9 @@
  *
  * For SPD-1, MED-1: restore to max uses a large stat_delta capped by the engine.
  * For RAD-X: direct stat_delta on radiation.
+ *
+ * NPC interaction missions use visibilityRequirements with type: 'npc_interaction'.
+ * These missions are hidden until the player talks to the specified NPC.
  */
 
 export interface MissionDefinition {
@@ -20,6 +23,7 @@ export interface MissionDefinition {
   primarySkill: string
   tier: number
   isActive: boolean
+  hideAfterCompletion?: boolean
   costs: object[]
   requirements: object[]
   visibilityRequirements: object[] | null
@@ -60,6 +64,7 @@ export const missionDefinitions: MissionDefinition[] = [
     primarySkill: 'medic',
     tier: 1,
     isActive: true,
+    hideAfterCompletion: true,
     costs: [{ type: 'item', itemKey: 'SPD-1', quantity: 1 }],
     requirements: [{ type: 'item_in_inventory', itemKey: 'SPD-1', quantity: 1 }],
     visibilityRequirements: null,
@@ -80,6 +85,7 @@ export const missionDefinitions: MissionDefinition[] = [
     primarySkill: 'medic',
     tier: 1,
     isActive: true,
+    hideAfterCompletion: true,
     costs: [{ type: 'item', itemKey: 'MED-1', quantity: 1 }],
     requirements: [{ type: 'item_in_inventory', itemKey: 'MED-1', quantity: 1 }],
     visibilityRequirements: null,
@@ -100,6 +106,7 @@ export const missionDefinitions: MissionDefinition[] = [
     primarySkill: 'chemist',
     tier: 1,
     isActive: true,
+    hideAfterCompletion: true,
     costs: [{ type: 'item', itemKey: 'RAD-X', quantity: 1 }],
     requirements: [{ type: 'item_in_inventory', itemKey: 'RAD-X', quantity: 1 }],
     visibilityRequirements: null,
@@ -120,14 +127,15 @@ export const missionDefinitions: MissionDefinition[] = [
     primarySkill: 'thug',
     tier: 2,
     isActive: true,
-    costs: [{ type: 'energy', amount: 2 }],
+    costs: [{ type: 'energy', amount: 3 }],
     requirements: [
-      { type: 'stat_min', stat: 'energy', value: 2 },
+      { type: 'stat_min', stat: 'energy', value: 3 },
       { type: 'stat_min', stat: 'health', value: 10 },
     ],
     visibilityRequirements: null,
     rewards: [
       { type: 'credits', min: 10, max: 20 },
+      { type: 'stat_delta', stat: 'thug', amount: 1 },
       { type: 'stat_chance', stat: 'health', amount: -10, probability: 0.2 },
     ],
     npcSlug: 'sal',
@@ -146,10 +154,11 @@ export const missionDefinitions: MissionDefinition[] = [
     primarySkill: 'thug',
     tier: 2,
     isActive: true,
-    costs: [{ type: 'energy', amount: 2 }],
-    requirements: [{ type: 'stat_min', stat: 'energy', value: 2 }],
+    costs: [{ type: 'energy', amount: 3 }],
+    requirements: [{ type: 'stat_min', stat: 'energy', value: 3 }],
     visibilityRequirements: null,
     rewards: [
+      { type: 'stat_delta', stat: 'thug', amount: 1 },
       { type: 'stat_delta', stat: 'radiation', amount: 5 },
       { type: 'item_chance', itemKey: 'rad-x', probability: 0.3, quantity: 1 },
     ],
@@ -173,6 +182,7 @@ export const missionDefinitions: MissionDefinition[] = [
     requirements: [{ type: 'stat_min', stat: 'energy', value: 3 }],
     visibilityRequirements: null,
     rewards: [
+      { type: 'stat_delta', stat: 'scavenger', amount: 1 },
       { type: 'stat_delta', stat: 'radiation', amount: 8 },
       { type: 'item_chance', itemKey: 'scrap-metal', probability: 0.6, quantity: 2 },
       { type: 'item_chance', itemKey: 'wire-coil', probability: 0.4, quantity: 1 },
@@ -183,5 +193,83 @@ export const missionDefinitions: MissionDefinition[] = [
       "Industrial ruins are heavy with rads but the pickings are good. You look like someone who can take the exposure. Interested?",
     completionMessage:
       "You came back. Good. What you found is worth something — if you can find a buyer.",
+  },
+  {
+    slug: 'reactor-search',
+    name: 'Search the Reactor District',
+    description:
+      "Comb the decommissioned reactor blocks for usable parts. The radiation will cost you. The components might be worth it.",
+    category: 'scavenging',
+    primarySkill: 'scavenger',
+    tier: 2,
+    isActive: true,
+    costs: [{ type: 'energy', amount: 2 }],
+    requirements: [{ type: 'stat_min', stat: 'energy', value: 2 }],
+    visibilityRequirements: null,
+    rewards: [
+      // Guaranteed radiation cost — the district takes its toll
+      { type: 'stat_delta', stat: 'radiation', amount: 8 },
+      { type: 'stat_delta', stat: 'scavenger', amount: 1 },
+      // Probabilistic loot — may come back empty-handed
+      { type: 'item_chance', itemKey: 'wire-coil',    probability: 0.50, quantity: 1 },
+      { type: 'item_chance', itemKey: 'scrap-metal',  probability: 0.30, quantity: 1 },
+      { type: 'item_chance', itemKey: 'fuses',        probability: 0.15, quantity: 1 },
+      { type: 'item_chance', itemKey: 'reactor-core', probability: 0.05, quantity: 1 },
+    ],
+    npcSlug: 'sal',
+    npcName: 'Sal',
+    availabilityMessage:
+      "The Reactor District's a mess but what's left behind is worth real money. Go careful — the rads will eat you alive if you stay too long.",
+    completionMessage:
+      "Reactor District doesn't give up its secrets easy. You took your dose. Hope whatever you found was worth it.",
+  },
+  // ─── Dustline Tavern NPC missions ──────────────────────────────────────────
+  // These missions are hidden until the player talks to the right NPC at the
+  // Dustline Tavern. visibilityRequirements: npc_interaction gates visibility.
+  {
+    slug: 'courier-run',
+    name: 'Courier Run',
+    description:
+      "Vex needs a package delivered across the Fringe — no questions asked. Fast legs, clean hands, decent pay.",
+    category: 'criminal',
+    primarySkill: 'pilot',
+    tier: 2,
+    isActive: true,
+    costs: [{ type: 'energy', amount: 3 }],
+    requirements: [{ type: 'stat_min', stat: 'energy', value: 3 }],
+    visibilityRequirements: [{ type: 'npc_interaction', npcId: 'vex' }],
+    rewards: [
+      { type: 'credits', min: 15, max: 30 },
+      { type: 'stat_delta', stat: 'pilot', amount: 1 },
+    ],
+    npcSlug: 'vex',
+    npcName: 'Vex',
+    availabilityMessage:
+      "You talked to Vex at the Tavern. She's got courier work if you want it — regular runs, decent credits, no awkward questions.",
+    completionMessage:
+      "Package delivered. Vex counts out your cut without looking up. She'll have more work soon.",
+  },
+  {
+    slug: 'black-market-recon',
+    name: 'Black Market Recon',
+    description:
+      "The Broker needs eyes on a deal going down in the market district. Watch, remember, report back.",
+    category: 'criminal',
+    primarySkill: 'thief',
+    tier: 2,
+    isActive: true,
+    costs: [{ type: 'energy', amount: 3 }],
+    requirements: [{ type: 'stat_min', stat: 'energy', value: 3 }],
+    visibilityRequirements: [{ type: 'npc_interaction', npcId: 'the-broker' }],
+    rewards: [
+      { type: 'credits', min: 10, max: 20 },
+      { type: 'stat_delta', stat: 'thief', amount: 1 },
+    ],
+    npcSlug: 'the-broker',
+    npcName: 'The Broker',
+    availabilityMessage:
+      "The Broker doesn't shake hands and doesn't repeat himself. He told you once: watch the deal, count the faces, remember the cargo. Do that and you get paid.",
+    completionMessage:
+      "The Broker nods once. No praise, no small talk. Credits appear in your account. He'll be in touch.",
   },
 ]
