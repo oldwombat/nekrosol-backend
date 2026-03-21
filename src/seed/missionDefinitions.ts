@@ -59,7 +59,7 @@ export const missionDefinitions: MissionDefinition[] = [
     slug: 'spd-1',
     name: 'Use SPD-1 Stimpak',
     description:
-      'Inject a SPD-1 combat stimpak. Synthetic adrenaline floods your system — energy fully restored.',
+      'Step 1: Head to the World tab → Blackglass Market → Enter.\nStep 2: Buy a SPD-1 Stimpak (30₵).\nStep 3: Return here — this mission will unlock automatically once you have one.\nStep 4: Press Complete to inject it. Your energy will be fully restored.',
     category: 'tech',
     primarySkill: 'medic',
     tier: 1,
@@ -80,7 +80,7 @@ export const missionDefinitions: MissionDefinition[] = [
     slug: 'med-1',
     name: 'Use MED-1 Medpack',
     description:
-      'Apply a MED-1 field medpack. Biofoam seals the wounds — health fully restored.',
+      'Step 1: Head to the World tab → Blackglass Market → Enter.\nStep 2: Buy a MED-1 Medpack (25₵).\nStep 3: Return here — this mission will unlock automatically once you have one.\nStep 4: Press Complete to apply it. Your health will be fully restored.',
     category: 'tech',
     primarySkill: 'medic',
     tier: 1,
@@ -101,7 +101,7 @@ export const missionDefinitions: MissionDefinition[] = [
     slug: 'rad-x',
     name: 'Use RAD-X Treatment',
     description:
-      'Administer a RAD-X chelation treatment. Reduces radiation by 10 points.',
+      'Step 1: Head to the World tab → Blackglass Market → Enter.\nStep 2: Buy a RAD-X Treatment (20₵).\nStep 3: Return here — this mission will unlock once you\'ve picked up some radiation.\nStep 4: Press Complete to administer it. Radiation reduced by 10 points.',
     category: 'tech',
     primarySkill: 'chemist',
     tier: 1,

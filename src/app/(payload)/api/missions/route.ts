@@ -70,6 +70,7 @@ export async function GET() {
           rewards: mission.rewards,
           available: availabilityResult.canRun,
           blockedReasons: availabilityResult.canRun ? [] : availabilityResult.blockedReasons,
+          hideAfterCompletion: mission.hideAfterCompletion ?? false,
         }
       }),
     )
