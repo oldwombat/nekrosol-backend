@@ -47,7 +47,8 @@ export const POST = async () => {
       const msRemaining = maturesAt - now
       const minutesRemaining = Math.ceil(msRemaining / 60_000)
       return Response.json({
-        error: `Deposit has not matured yet. ${minutesRemaining} minute(s) remaining. The Ministry does not allow early withdrawal.`,
+        error: `Deposit not yet matured. ${minutesRemaining} minute(s) remaining. The Ministry does not allow early withdrawal.`,
+        maturesAt: deposit.maturesAt,
       }, { status: 400 })
     }
 

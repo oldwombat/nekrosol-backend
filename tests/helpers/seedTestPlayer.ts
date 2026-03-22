@@ -29,6 +29,21 @@ async function deletePlayerAndInventory(payload: Awaited<ReturnType<typeof getPa
   for (const player of existing.docs) {
     // Delete dependent rows before deleting the player (NOT NULL FK constraints)
     await payload.delete({
+      collection: 'bank-deposits',
+      where: { player: { equals: player.id } },
+      overrideAccess: true,
+    })
+    await payload.delete({
+      collection: 'game-events',
+      where: { player: { equals: player.id } },
+      overrideAccess: true,
+    })
+    await payload.delete({
+      collection: 'player-npc-interactions',
+      where: { player: { equals: player.id } },
+      overrideAccess: true,
+    })
+    await payload.delete({
       collection: 'player-quest-progress',
       where: { player: { equals: player.id } },
       overrideAccess: true,
