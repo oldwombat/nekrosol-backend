@@ -1,3 +1,18 @@
+# Nekrosol Backend — Agent Rules
+
+## Git Workflow
+
+- **Never commit directly to `main`**. All work happens on a feature branch.
+- Branch naming: `feature/<short-description>` (e.g. `feature/radiation-decay`, `feature/bank-deposits`)
+- Workflow:
+  1. `git checkout -b feature/<name>` from latest `main`
+  2. Make changes, commit with descriptive messages + Co-authored-by trailer
+  3. `git push origin feature/<name>`
+  4. Open a PR targeting `main` — do not merge without user approval
+- Hotfixes may use `hotfix/<name>` branches
+
+---
+
 # Payload CMS Development Rules
 
 You are an expert Payload CMS developer. When working with Payload projects, follow these rules:
