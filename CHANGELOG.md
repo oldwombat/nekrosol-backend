@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added (Sprints 3–7)
+- **Sprint 7** — `activity_log` type added to Messages collection; `src/lib/activity-log.ts` with `createActivityLog()` + `diffInventory()`; `player-actions/route.ts` returns `inventoryDeltas` and writes log entries on every mission
+- **Sprint 6** — Radiation decay −1 per 60 minutes (lazy, server-side timestamp, no background timers)
+- **Sprint 5** — `hideAfterCompletion` field on Missions exposed in API; step-by-step descriptions for spd-1/med-1/rad-x tutorial missions
+- **Sprint 4** — `BankDeposits` + `PlayerNPCInteractions` collections; `/api/bank` (GET/deposit/withdraw); `/api/npc/interact`; `npc_interaction` visibility requirement type; 3 new missions (`reactor-search`, `courier-run`, `black-market-recon`); 2 new items (`fuses`, `reactor-core`); `hideAfterCompletion` field on Missions; tutorial welcome message from Sal on signup; 10 new E2E tests
+- **Sprint 3** — `/api/missions` + `/api/messages` + `/api/messages/[id]/read` endpoints; `GET /api/player-quests` + `POST /api/player-quests/[id]/complete` (prestige trials); energy lazy regen (`src/lib/energy.ts`); `lastEnergyUpdate` + `regenRateMs` in API response
+- **Sprint 2** — `Missions`, `Messages`, `PlayerMissionHistory` collections; `src/lib/mission-engine.ts`; player-actions refactored to data-driven engine; NPC messaging (Sal); 28 E2E tests passing
+
 ### Added
 - `addInventoryItem(payload, playerID, itemKey, quantity)` helper in `src/lib/player-inventory.ts` — upserts inventory rows, enabling all mission loot drops
 - `ESCORT` mission action: costs 2 energy, earns 10–20 credits, 20% chance of −10 health combat damage

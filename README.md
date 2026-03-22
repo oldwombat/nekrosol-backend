@@ -1,70 +1,106 @@
-# Payload Blank Template
+# Nekrosol — Backend
 
-This template comes configured with the bare minimum to get started on anything you need.
+Payload CMS 3 + Next.js App Router backend for **Nekrosol**, a browser-based text RPG set in a dying solar system.
 
-## Quick start
+## Stack
 
-This template can be deployed directly from our Cloud hosting and it will setup MongoDB and cloud S3 object storage for media.
+| Layer | Technology |
+|-------|------------|
+| CMS / API | [Payload CMS 3](https://payloadcms.com) |
+| Framework | Next.js 15 App Router |
+| Database | SQLite via `@payloadcms/db-sqlite` |
+| Runtime | Node.js / pnpm |
+| Tests | Playwright (E2E) + Vitest (integration) |
 
-## Quick Start - local setup
+## Quick Start
 
-To spin up this template locally, follow these steps:
+```bash
+pnpm install
+cp .env.example .env   # set PAYLOAD_SECRET and DATABASE_URL
+pnpm dev               # http://localhost:3000
+```
 
-### Clone
+Admin panel: `http://localhost:3000/admin`
 
-After you click the `Deploy` button above, you'll want to have standalone copy of this repo on your machine. If you've already cloned this repo, skip to [Development](#development).
+## Collections
 
-### Development
+| Collection | Purpose |
+|-----------|---------|
+| `Players` | Auth-enabled player accounts with stats (credits, energy, health, radiation) and 12 skills |
+| `Users` | Admin panel users |
+| `Missions` | Data-driven mission definitions (costs, rewards, requirements, visibility rules) |
+| `Messages` | NPC inbox (Sal + faction NPCs) + activity log entries |
+| `PlayerMissionHistory` | Per-player mission completion log (feeds Trial requirement checks) |
+| `Quests` | Prestige trial gates per skill (rename to `Trials` is planned) |
+| `PlayerQuestProgress` | Per-player trial progress tracking |
+| `Inventory` | Per-player item tracking (itemKey + quantity) |
+| `BankDeposits` | Ember Bank term deposits with maturity dates |
+| `PlayerNPCInteractions` | Tracks which NPCs a player has spoken with (controls mission unlocks) |
+| `GameEvents` | Append-only event log |
+| `Lore` | In-world lore entries (department, visibility, tags) |
+| `Media` | File uploads |
 
-1. First [clone the repo](#clone) if you have not done so already
-2. `cd my-project && cp .env.example .env` to copy the example environment variables. You'll need to add the `MONGODB_URL` from your Cloud project to your `.env` if you want to use S3 storage and the MongoDB database that was created for you.
+## Player API Routes
 
-3. `pnpm install && pnpm dev` to install dependencies and start the dev server
-4. open `http://localhost:3000` to open the app in your browser
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/players/me` | Current player session |
+| `POST /api/players/login` | Login |
+| `POST /api/players/logout` | Logout |
+| `POST /api/players/create-first-user` | Signup |
+| `POST /api/player-actions` | Run a mission (BEG, ESCORT, PATROL, SALVAGE, etc.) |
+| `GET /api/player-inventory` | Player's inventory |
+| `GET /api/missions` | All visible missions with availability status |
+| `GET /api/messages` | NPC inbox + activity log |
+| `POST /api/messages/[id]/read` | Mark message read |
+| `GET /api/bank` | Current bank deposit (if any) |
+| `POST /api/bank/deposit` | Create term deposit |
+| `POST /api/bank/withdraw` | Withdraw matured deposit |
+| `POST /api/npc/interact` | NPC dialogue + mission unlock |
+| `GET /api/player-quests` | Player's trial (quest) progress |
+| `POST /api/player-quests/[id]/complete` | Complete a trial |
 
-#### Docker (Optional)
+## Key Library Files
 
-If you prefer to use Docker for local development instead of a local MongoDB instance, the provided docker-compose.yml file can be used.
+| File | Purpose |
+|------|---------|
+| `src/lib/mission-engine.ts` | `isMissionVisible`, `canRunMission`, `executeMission`, NPC messaging |
+| `src/lib/energy.ts` | Lazy energy regeneration (calculated at request time, no background timers) |
+| `src/lib/player-inventory.ts` | `getPlayerInventory`, `consumeInventoryItem`, `addInventoryItem` |
+| `src/lib/activity-log.ts` | `createActivityLog`, `diffInventory` — writes activity_log Messages entries |
 
-To do so, follow these steps:
+## Commands
 
-- Modify the `MONGODB_URL` in your `.env` file to `mongodb://127.0.0.1/<dbname>`
-- Modify the `docker-compose.yml` file's `MONGODB_URL` to match the above `<dbname>`
-- Run `docker-compose up` to start the database, optionally pass `-d` to run in the background.
+```bash
+pnpm dev              # start dev server (port 3000)
+pnpm build            # production build
+pnpm start            # start production server
+pnpm lint             # ESLint
+pnpm test:int         # Vitest integration tests
+pnpm test:e2e         # Playwright E2E tests
+pnpm test             # all tests
+pnpm generate:types   # regenerate src/payload-types.ts after schema changes
+pnpm generate:importmap  # regenerate admin import map after adding components
+pnpm payload migrate:create  # create a new migration
+pnpm payload migrate         # apply pending migrations
+```
 
-## How it works
+## Environment Variables
 
-The Payload config is tailored specifically to the needs of most websites. It is pre-configured in the following ways:
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PAYLOAD_SECRET` | ✅ | Secret key for Payload (JWT signing etc.) |
+| `DATABASE_URL` | ✅ | SQLite file path (e.g. `file:./nekrosol.db`) |
+| `CORS_ORIGINS` | production | Comma-separated allowed origins |
 
-### Collections
+## Git Workflow
 
-See the [Collections](https://payloadcms.com/docs/configuration/collections) docs for details on how to extend this functionality.
+All work happens on feature branches — never commit directly to `main`. See `AGENTS.md` for branch naming conventions.
 
-- #### Users (Authentication)
+## Docs
 
-  Users are auth-enabled collections that have access to the admin panel.
-
-  For additional help, see the official [Auth Example](https://github.com/payloadcms/payload/tree/main/examples/auth) or the [Authentication](https://payloadcms.com/docs/authentication/overview#authentication-overview) docs.
-
-- #### Media
-
-  This is the uploads enabled collection. It features pre-configured sizes, focal point and manual resizing to help you manage your pictures.
-
-### Docker
-
-Alternatively, you can use [Docker](https://www.docker.com) to spin up this template locally. To do so, follow these steps:
-
-1. Follow [steps 1 and 2 from above](#development), the docker-compose file will automatically use the `.env` file in your project root
-1. Next run `docker-compose up`
-1. Follow [steps 4 and 5 from above](#development) to login and create your first admin user
-
-## Questions
-
-If you have any issues or questions, reach out to us on [Discord](https://discord.com/invite/payload) or start a [GitHub discussion](https://github.com/payloadcms/payload/discussions).
-
-## Payload CLI
-- Create new Types in `src/types/` for your collections and globals.
-- `npx payload generate:types` to generate TypeScript types for your collections and globals. This is useful for type safety in your custom code and API routes.
-- `npx payload migrate:create` to create a new database migration file based on changes to your collections or globals. This helps you manage schema changes in your database over time.
-- `npx payload migrate` to apply any pending migrations to your database.
-- `sqlite3 ./nekrosol.db "INSERT INTO payload_migrations (name, batch, created_at, updated_at) VALUES ('20260218_095609_init', (SELECT COALESCE(MAX(batch), 0) + 1 FROM payload_migrations), strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'));"` to manually insert a migration record if you need to mark a migration as applied without running it.
+- [`RELEASE_NOTES.md`](./RELEASE_NOTES.md) — What's been built sprint by sprint
+- [`ROADMAP.md`](./ROADMAP.md) — Upcoming features and backlog
+- [`CHANGELOG.md`](./CHANGELOG.md) — Commit-level change log
+- [`docs/VISION.md`](./docs/VISION.md) — Game design document
+- [`docs/PLAYWRIGHT.md`](./docs/PLAYWRIGHT.md) — E2E test guide

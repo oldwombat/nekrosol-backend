@@ -43,7 +43,7 @@ export const POST = async (request: Request) => {
 
     const npcDef = NPC_CATALOGUE[npcId]
     if (!npcDef) {
-      return Response.json({ error: `Unknown NPC: ${npcId}` }, { status: 400 })
+      return Response.json({ error: `Unknown NPC: ${npcId}` }, { status: 404 })
     }
 
     const player = await payload.findByID({
@@ -67,15 +67,18 @@ export const POST = async (request: Request) => {
       overrideAccess: true,
     })
 
+    let interactionCount: number
     if (existing.totalDocs > 0) {
       const record = existing.docs[0] as PlayerNpcInteraction
+      interactionCount = ((record.interactionCount as number) ?? 1) + 1
       await payload.update({
         collection: 'player-npc-interactions',
         id: record.id,
-        data: { interactionCount: ((record.interactionCount as number) ?? 1) + 1 },
+        data: { interactionCount },
         overrideAccess: true,
       })
     } else {
+      interactionCount = 1
       await payload.create({
         collection: 'player-npc-interactions',
         data: {
@@ -97,7 +100,7 @@ export const POST = async (request: Request) => {
       overrideAccess: true,
     })
 
-    const unlockedMissions: { slug: string; name: string }[] = []
+    const unlockedMissions: { id: string; name: string }[] = []
 
     for (const mission of allMissions.docs as Mission[]) {
       const visReqs = (mission.visibilityRequirements ?? []) as Array<{ type: string; npcId?: string }>
@@ -106,14 +109,16 @@ export const POST = async (request: Request) => {
 
       const visible = await isMissionVisible(player, mission, payload)
       if (visible) {
-        unlockedMissions.push({ slug: mission.slug as string, name: mission.name as string })
+        unlockedMissions.push({ id: mission.slug as string, name: mission.name as string })
       }
     }
 
     return Response.json({
       ok: true,
+      npcId,
       npc: { id: npcId, name: npcDef.name },
       dialogue: npcDef.dialogue,
+      interactionCount,
       unlockedMissions,
     })
   } catch (err) {

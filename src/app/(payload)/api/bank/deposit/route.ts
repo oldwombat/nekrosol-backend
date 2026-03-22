@@ -109,7 +109,7 @@ export const POST = async (request: Request) => {
         maturesAt: maturesAt.toISOString(),
         return: Math.floor(amount * (1 + term.interestRate)),
       },
-      credits: currentCredits - amount,
+      creditsRemaining: currentCredits - amount,
     })
   } catch (err) {
     console.error('[POST /api/bank/deposit]', err)

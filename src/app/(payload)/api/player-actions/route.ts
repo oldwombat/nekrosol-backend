@@ -63,6 +63,32 @@ export const POST = async (request: Request) => {
       payload,
     ) as Player
 
+    // Per-action radiation tick: decay by 1 if any radiation present;
+    // deal 2 health damage if radiation is above the sickness threshold (>80).
+    const currentRadiation = (player.radiation as number) ?? 0
+    const radDecay = currentRadiation > 0 ? 1 : 0
+    const radDamage = currentRadiation > 80 ? 2 : 0
+    const radiationTick = { decayed: radDecay, damage: radDamage }
+
+    if (radDecay > 0 || radDamage > 0) {
+      const tickUpdates: Partial<Record<string, number>> = {
+        radiation: Math.max(0, currentRadiation - radDecay),
+      }
+      if (radDamage > 0) {
+        const currentHealth = (player.health as number) ?? 0
+        tickUpdates.health = Math.max(0, currentHealth - radDamage)
+      }
+      const tickedPlayer = await payload.update({
+        collection: 'players',
+        id: player.id,
+        data: tickUpdates,
+        overrideAccess: true,
+        depth: 0,
+      }) as Player
+      // Use the post-tick player state for mission execution
+      Object.assign(player, tickedPlayer)
+    }
+
     // Look up mission from the database
     const missionsResult = await payload.find({
       collection: 'missions',
@@ -120,7 +146,6 @@ export const POST = async (request: Request) => {
     const postActionPlayer = result.playerAfter
 
     // Apply any remaining housekeeping updates (energy regen clock init).
-    // Radiation is now managed by the lazy syncRadiationDecay pattern — no per-action tick.
     const tickData: Record<string, number | string> = {}
 
     // Start the regen clock the first time energy drops below max.
@@ -206,6 +231,7 @@ export const POST = async (request: Request) => {
       action: actionSlug,
       rewardsSummary: result.rewardsSummary,
       statChanges: result.statChanges,
+      radiationTick,
       player: finalPlayer,
       inventoryCounts: inventory.counts,
       inventoryDeltas,

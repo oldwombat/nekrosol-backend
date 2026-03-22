@@ -8,11 +8,10 @@
 
 | Repo | Stack | Status |
 |------|-------|--------|
-| `nekrosol-backend` | Payload CMS 3 + Next.js + SQLite | 19 E2E tests · 5 actions live · CORS hardened |
-| `nekrosol-frontend` | Expo 54 + React Native + Expo Router | 16 unit tests · Locations screen · Mission modals |
+| `nekrosol-backend` | Payload CMS 3 + Next.js + SQLite | 28 E2E tests · 7 missions live · CORS hardened · Activity log |
+| `nekrosol-frontend` | Expo 54 + React Native + Expo Router | Auth-gated tabs · Toast notifications · NPC inbox · Location modals |
 
-**Live actions:** `BEG` · `SPD-1` · `MED-1` · `RAD-X` · `ESCORT`  
-**Stubbed (action: null):** Patrol · Salvage · all Skills  
+**Live missions:** `BEG` · `SPD-1` · `MED-1` · `RAD-X` · `ESCORT` · `PATROL` · `SALVAGE` · `REACTOR-SEARCH` · `COURIER-RUN` · `BLACK-MARKET-RECON`  
 **Docs:** `docs/VISION.md` · `docs/PLAYWRIGHT.md` · `CHANGELOG.md`
 
 ---
@@ -52,11 +51,13 @@
 ## Area 3 — Frontend UI/UX
 
 - [x] **Replace Explore tab with World/Locations screen** `[frontend-replace-explore]`
+- [x] **Mission detail panel** `[frontend-mission-modal]` — right panel (no modal)
+- [x] **Global auth context** `[frontend-auth-context]` — `AuthProvider` in `_layout.tsx`; all tabs use `useAuthContext()`
+- [x] **Toast notifications** — red/green/blue animated pills; Messages filter toggle
+- [x] **Auth gating for World + Messages tabs** — login form shown when unauthenticated
+
 - [ ] **Dedicated Inventory screen** `[frontend-inventory-screen]`  
   New `app/(tabs)/inventory.tsx` tab with FlatList, inline use/equip, empty state.
-
-- [ ] **Global auth context** `[frontend-auth-context]` ← *unblocks TopNav player info*  
-  Move player state into React context at `app/_layout.tsx`.
 
 - [ ] **Enhanced stat bars** `[frontend-stat-bars]`  
   Radiation pulse above 80%. Health colour gradient. Energy pips. Credits counter.
@@ -64,10 +65,7 @@
 - [ ] **Onboarding flow** `[frontend-onboarding]`  
   Welcome modal on first login. Display name pick + lore intro. AsyncStorage dismiss.
 
-- [x] **Mission detail modal** `[frontend-mission-modal]`  
-  Tapping a mission opens modal with description, energy cost, reward, Run CTA.
-
-- [ ] **Player info in TopNav** `[frontend-topnav-player]` *(needs: auth context)*  
+- [ ] **Player info in TopNav** `[frontend-topnav-player]`  
   Show displayName and credits in header when authenticated.
 
 ---
@@ -81,48 +79,13 @@
 
 ---
 
-- [ ] **Dedicated Inventory screen** `[frontend-inventory-screen]`  
-  New `app/(tabs)/inventory.tsx` tab. FlatList of items with quantities. Inline use/equip actions. Empty state messaging.
-
-- [ ] **Global auth context** `[frontend-auth-context]` ← *unblocks TopNav player info*  
-  Move player state from `useHomeAuth` into a React context at `app/_layout.tsx` so all tabs share one session.
-
-- [ ] **Enhanced stat bars** `[frontend-stat-bars]`  
-  Radiation: orange/red gradient + pulse animation above 80%. Health: green→yellow→red by percentage. Energy: pip-style for 10-max. Credits: comma-formatted with animated counter.
-
-- [ ] **Onboarding flow** `[frontend-onboarding]`  
-  Welcome modal on first login (when `displayName` is empty). Step 1: choose display name. Step 2: brief lore intro. Persist dismissed state in AsyncStorage.
-
-- [ ] **Mission detail modal** `[frontend-mission-modal]`  
-  Tapping a mission opens a modal with full description, energy cost, reward preview, and Run Mission CTA. Update `home-data.ts` mission type with `energyCost` and `rewardHint`.
-
-- [ ] **Player info in TopNav** `[frontend-topnav-player]` *(needs: auth context)*  
-  Show `displayName` and credit balance in the header when authenticated.
-
----
-
-## Area 4 — Architecture & Code Quality
-
-- [ ] **Frontend API client module** `[arch-api-client]`  
-  Create `nekrosol-frontend/lib/api.ts`. Replace scattered `fetch` calls across screens with typed functions. Single source for base URL, credentials, and error normalisation.
-
-- [ ] **Tighten CORS config** `[arch-cors-tighten]`  
-  Remove wildcard `*` from `payload.config.ts`. Set explicit allowed origins. Document in README.
-
-- [ ] **Rate limiting on player-actions** `[arch-rate-limit]`  
-  Add request-rate limiting to `POST /api/player-actions` (e.g. 20 req/min per player). Respond 429 when exceeded.
-
----
-
 ## Suggested Next Sprint
 
-The natural sequence based on dependencies:
-
-1. `mechanics-mission-patrol` + `mechanics-mission-salvage` — `addInventoryItem` is now done, these unblock skill XP
-2. `frontend-auth-context` — enables TopNav player info and cleaner architecture
-3. `frontend-stat-bars` — high visual impact, animations already available via reanimated
-4. `frontend-inventory-screen` — dedicated tab is better UX than embedded list
-5. `arch-rate-limit` — security hardening before any public release
+1. `mechanics-skill-xp` — Award XP on mission completion (unblocks Trial progression)
+2. `trial-type-mission-count` — Wire `mission_count` trial requirement to `PlayerMissionHistory`
+3. `frontend-stat-bars` — High visual impact, clear gameplay feedback
+4. `frontend-inventory-screen` — Dedicated tab is better UX than inline
+5. `arch-rate-limit` — Security hardening before any public release
 
 ---
 

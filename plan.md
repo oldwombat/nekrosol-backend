@@ -336,24 +336,24 @@ Interactive modals for all World tab locations + one-time tutorial mission syste
 
 ---
 
-## Sprint 5 — Tutorial Mission UX 🔜 NEXT
+## Sprint 5 — Tutorial Mission UX ✅ COMPLETE
 
-**The problem:** The three one-time tutorial missions (spd-1, med-1, rad-x) are now `hideAfterCompletion: true` and new players receive a Sal welcome message pointing them to Blackglass Market. However the mission UX doesn't guide them through the steps clearly:
-- Locked state shows raw "Need 1x RAD-X in inventory (have 0)" — no hint where to buy it
-- Available state shows "Run Mission" — doesn't communicate this is a tutorial task to complete
-- Description text doesn't walk through the steps
+Step-by-step tutorial descriptions for spd-1/med-1/rad-x, "Complete Tutorial ✓" button, friendly locked hints pointing to Blackglass Market. All done.
 
-### Goals
-1. Surface `hideAfterCompletion` in `GET /api/missions` response and `LiveMission` frontend type
-2. Update descriptions for `spd-1`, `med-1`, `rad-x` to be step-by-step guides (go to Market → buy → return)
-3. Frontend: show **"Complete Tutorial"** button instead of "Run Mission" for `hideAfterCompletion` missions
-4. Frontend: locked tutorial missions show a friendly hint ("Purchase from Blackglass Market") instead of the raw blocked reason
+---
 
-### Tasks
-- [ ] `s5-api-expose-hide-flag` — Add `hideAfterCompletion` to missions API response + `LiveMission` type
-- [ ] `s5-tutorial-descriptions` — Update spd-1/med-1/rad-x descriptions in `missionDefinitions.ts` + DB
-- [ ] `s5-complete-tutorial-button` — Frontend: "Complete Tutorial" label for `hideAfterCompletion` missions when available
-- [ ] `s5-locked-hint` — Frontend: show shop location hint for locked tutorial missions
+## Sprint 6 — Radiation Decay & Activity Log ✅ COMPLETE
+
+- Radiation now decays −1 per 60 minutes (lazy, same pattern as energy regen)
+- `activity_log` type added to Messages collection
+- `src/lib/activity-log.ts` — `createActivityLog()` + `diffInventory()` helpers
+- `player-actions/route.ts` — snapshots inventory before action, computes `inventoryDeltas`, writes log entries, returns deltas in response
+
+---
+
+## Sprint 7 — Toast Notifications & Auth Gating ✅ COMPLETE (frontend)
+
+See `nekrosol-frontend` for details. Backend changes: activity_log Messages type.
 
 ---
 

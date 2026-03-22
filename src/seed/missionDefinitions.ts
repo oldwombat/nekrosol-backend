@@ -127,9 +127,9 @@ export const missionDefinitions: MissionDefinition[] = [
     primarySkill: 'thug',
     tier: 2,
     isActive: true,
-    costs: [{ type: 'energy', amount: 3 }],
+    costs: [{ type: 'energy', amount: 2 }],
     requirements: [
-      { type: 'stat_min', stat: 'energy', value: 3 },
+      { type: 'stat_min', stat: 'energy', value: 2 },
       { type: 'stat_min', stat: 'health', value: 10 },
     ],
     visibilityRequirements: null,
